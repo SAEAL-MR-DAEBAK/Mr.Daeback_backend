@@ -1,4 +1,4 @@
-package com.saeal.MrDaebackService.Config;
+package com.saeal.MrDaebackService.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

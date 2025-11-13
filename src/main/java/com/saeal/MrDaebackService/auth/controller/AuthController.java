@@ -2,6 +2,7 @@ package com.saeal.MrDaebackService.auth.controller;
 
 import com.saeal.MrDaebackService.auth.dto.LoginDto;
 import com.saeal.MrDaebackService.auth.dto.LoginResponseDto;
+import com.saeal.MrDaebackService.auth.dto.RefreshTokenRequestDto;
 import com.saeal.MrDaebackService.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -23,6 +24,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginDto loginDto) {
         LoginResponseDto result = authService.login(loginDto);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponseDto> refresh(@Valid @RequestBody RefreshTokenRequestDto refreshTokenRequestDto) {
+        LoginResponseDto result = authService.refresh(refreshTokenRequestDto.getRefreshToken());
         return ResponseEntity.ok(result);
     }
 }
