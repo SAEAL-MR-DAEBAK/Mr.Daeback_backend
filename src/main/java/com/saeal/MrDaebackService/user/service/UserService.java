@@ -21,10 +21,10 @@ public class UserService {
 
     @Transactional
     public UserResponseDto register(RegisterDto registerDto) {
-        if(userRepository.existsByEmailIgnoreCase(registerDto.getEmail())) {
+        if (userRepository.existsByEmailIgnoreCase(registerDto.getEmail())) {
             throw new IllegalArgumentException("Email already exist");
         }
-        if(userRepository.existsByUsernameIgnoreCase(registerDto.getUsername())) {
+        if (userRepository.existsByUsernameIgnoreCase(registerDto.getUsername())) {
             throw new IllegalArgumentException("Username already exist");
         }
 
@@ -42,14 +42,6 @@ public class UserService {
 
         userRepository.save(user);
 
-        return new UserResponseDto(
-                user.getId().toString(),
-                user.getEmail(),
-                user.getUsername(),
-                user.getDisplayName(),
-                user.getPhoneNumber(),
-                user.getAddress(),
-                user.getAuthority().name()
-        );
+        return UserResponseDto.from(user);
     }
 }
