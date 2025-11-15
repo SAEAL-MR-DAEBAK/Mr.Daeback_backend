@@ -21,7 +21,7 @@ public class DinnerController {
 
     private final DinnerService dinnerService;
 
-    @PostMapping
+    @PostMapping("/createDinner")
     public ResponseEntity<DinnerResponseDto> createDinner(@Valid @RequestBody CreateDinnerRequest request) {
         DinnerResponseDto response = dinnerService.createDinner(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
