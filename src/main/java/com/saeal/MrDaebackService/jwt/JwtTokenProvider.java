@@ -1,15 +1,23 @@
 package com.saeal.MrDaebackService.jwt;
 
+import com.saeal.MrDaebackService.security.JwtUserDetails;
 import com.saeal.MrDaebackService.user.domain.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.util.List;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -47,6 +55,29 @@ public class JwtTokenProvider {
         return accessExpirationInMillis;
     }
 
+    public boolean validateAccessToken(String token) {
+        return validateToken(token, accessTokenKey, "access");
+    }
+
+    public Authentication getAuthentication(String token) {
+        Claims claims = parseClaims(token, accessTokenKey);
+        String tokenType = claims.get("tokenType", String.class);
+        if (!"access".equals(tokenType)) {
+            throw new IllegalArgumentException("Invalid token type");
+        }
+        UUID userId = UUID.fromString(claims.getSubject());
+        String username = claims.get("username", String.class);
+        String authority = claims.get("authority", String.class);
+
+        JwtUserDetails principal = new JwtUserDetails(
+                userId,
+                username,
+                List.of(new SimpleGrantedAuthority(authority))
+        );
+
+        return new UsernamePasswordAuthenticationToken(principal, token, principal.getAuthorities());
+    }
+
     private String generateToken(User user, Key key, long expirationInMillis, String tokenType) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationInMillis);
@@ -60,5 +91,22 @@ public class JwtTokenProvider {
                 .setExpiration(expiryDate)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    private boolean validateToken(String token, Key key, String expectedType) {
+        try {
+            Claims claims = parseClaims(token, key);
+            return expectedType.equals(claims.get("tokenType", String.class));
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private Claims parseClaims(String token, Key key) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 }
