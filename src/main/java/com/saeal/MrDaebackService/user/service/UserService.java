@@ -4,13 +4,16 @@ import com.saeal.MrDaebackService.user.domain.User;
 import com.saeal.MrDaebackService.user.dto.request.RegisterDto;
 import com.saeal.MrDaebackService.user.dto.response.UserResponseDto;
 import com.saeal.MrDaebackService.user.enums.Authority;
+import com.saeal.MrDaebackService.user.enums.LoyaltyLevel;
 import com.saeal.MrDaebackService.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -36,11 +39,25 @@ public class UserService {
                 .phoneNumber(registerDto.getPhoneNumber())
                 .address(registerDto.getAddress())
                 .authority(Authority.ROLE_USER)
+                .loyaltyLevel(LoyaltyLevel.BRONZE)
+                .visitCount(0L)
+                .totalSpent(BigDecimal.ZERO)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
         userRepository.save(user);
+
+        return UserResponseDto.from(user);
+    }
+
+    @Transactional
+    public UserResponseDto makeAdmin(String username) {
+        User user = userRepository.findByUsernameIgnoreCase(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
+
+        user.setAuthority(Authority.ROLE_ADMIN);
+        user.setUpdatedAt(LocalDateTime.now());
 
         return UserResponseDto.from(user);
     }

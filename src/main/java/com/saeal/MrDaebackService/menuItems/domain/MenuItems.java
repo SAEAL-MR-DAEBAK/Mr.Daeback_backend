@@ -1,4 +1,4 @@
-package com.saeal.MrDaebackService.menuItems;
+package com.saeal.MrDaebackService.menuItems.domain;
 
 import jakarta.persistence.*;
 import lombok.*;

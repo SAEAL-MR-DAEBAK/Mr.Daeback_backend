@@ -1,4 +1,4 @@
-package com.saeal.MrDaebackService.servingStyle;
+package com.saeal.MrDaebackService.servingStyle.domain;
 
 import jakarta.persistence.*;
 import lombok.*;

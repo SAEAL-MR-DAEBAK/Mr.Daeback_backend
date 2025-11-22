@@ -1,5 +1,6 @@
-package com.saeal.MrDaebackService.menuItems;
+package com.saeal.MrDaebackService.menuItems.dto;
 
+import com.saeal.MrDaebackService.menuItems.domain.MenuItems;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -1,4 +1,4 @@
-package com.saeal.MrDaebackService.menuItems;
+package com.saeal.MrDaebackService.menuItems.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;

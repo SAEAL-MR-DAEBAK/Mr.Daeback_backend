@@ -1,5 +1,10 @@
-package com.saeal.MrDaebackService.menuItems;
+package com.saeal.MrDaebackService.menuItems.service;
 
+import com.saeal.MrDaebackService.menuItems.domain.MenuItems;
+import com.saeal.MrDaebackService.menuItems.dto.CreateMenuItemRequest;
+import com.saeal.MrDaebackService.menuItems.dto.MenuItemResponseDto;
+import com.saeal.MrDaebackService.menuItems.dto.UpdateMenuItemStockRequest;
+import com.saeal.MrDaebackService.menuItems.repository.MenuItemsRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

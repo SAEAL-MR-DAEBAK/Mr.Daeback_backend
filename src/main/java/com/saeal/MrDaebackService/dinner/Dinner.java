@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -32,4 +34,8 @@ public class Dinner {
     @Builder.Default
     @Column(nullable = false)
     private boolean isActive = true;
+
+    @OneToMany(mappedBy = "dinner", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<DinnerMenuItem> dinnerMenuItems = new ArrayList<>();
 }
