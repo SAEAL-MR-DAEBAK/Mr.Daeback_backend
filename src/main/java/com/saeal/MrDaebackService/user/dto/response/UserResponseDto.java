@@ -16,6 +16,9 @@ public class UserResponseDto {
     private String phoneNumber;
     private String address;
     private String authority;
+    private String loyaltyLevel;
+    private Long visitCount;
+    private String totalSpent;
 
     public static UserResponseDto from(User user) {
         return new UserResponseDto(
@@ -25,7 +28,10 @@ public class UserResponseDto {
                 user.getDisplayName(),
                 user.getPhoneNumber(),
                 user.getAddress(),
-                user.getAuthority().name()
+                user.getAuthority().name(),
+                user.getLoyaltyLevel().name(),
+                user.getVisitCount(),
+                user.getTotalSpent().toPlainString()
         );
     }
 }

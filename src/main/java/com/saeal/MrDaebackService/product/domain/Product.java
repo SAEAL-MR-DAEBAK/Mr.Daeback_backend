@@ -1,7 +1,8 @@
 package com.saeal.MrDaebackService.product.domain;
 
 import com.saeal.MrDaebackService.dinner.Dinner;
-import com.saeal.MrDaebackService.menuItems.domain.MenuItems;
+import com.saeal.MrDaebackService.servingStyle.domain.ServingStyle;
+import com.saeal.MrDaebackService.product.domain.ProductMenuItem;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,9 +27,12 @@ public class Product {
     @ManyToOne(fetch = FetchType.LAZY,  optional = false)
     private Dinner dinner;
 
+    @ManyToOne(fetch = FetchType.LAZY,  optional = false)
+    private ServingStyle servingStyle;
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<MenuItems> menuItems = new ArrayList<>();
+    private List<ProductMenuItem> productMenuItems = new ArrayList<>();
 
     @Column(nullable = false, length = 100)
     private String productName;

@@ -1,10 +1,12 @@
 package com.saeal.MrDaebackService.user.domain;
 
 import com.saeal.MrDaebackService.user.enums.Authority;
+import com.saeal.MrDaebackService.user.enums.LoyaltyLevel;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -36,6 +38,16 @@ public class User {
     @Column(nullable = false)
     private Authority authority;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private LoyaltyLevel loyaltyLevel;
+
+    @Column(nullable = false)
+    private Long visitCount;
+
+    @Column(nullable = false, precision = 18, scale = 2)
+    private BigDecimal totalSpent;
+
     @Column(nullable = false, length = 20)
     private String phoneNumber;
 
@@ -47,6 +59,25 @@ public class User {
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void onCreate() {
+        if (this.loyaltyLevel == null) {
+            this.loyaltyLevel = LoyaltyLevel.BASIC;
+        }
+        if (this.visitCount == null) {
+            this.visitCount = 0L;
+        }
+        if (this.totalSpent == null) {
+            this.totalSpent = BigDecimal.ZERO;
+        }
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = LocalDateTime.now();
+        }
+    }
 
     @PreUpdate
     public void onUpdate() {
