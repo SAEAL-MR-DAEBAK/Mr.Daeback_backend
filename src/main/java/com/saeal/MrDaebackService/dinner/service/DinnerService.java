@@ -49,6 +49,13 @@ public class DinnerService {
     }
 
     @Transactional
+    public List<DinnerResponseDto> getAllDinners() {
+        return dinnerRepository.findAll().stream()
+                .map(DinnerResponseDto::from)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
     public DinnerMenuItemResponseDto createDinnerMenuItem(CreateDinnerMenuItemRequest request) {
         UUID dinnerId = UUID.fromString(request.getDinnerId());
         UUID menuItemId = UUID.fromString(request.getMenuItemId());

@@ -31,6 +31,12 @@ public class DinnerController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @GetMapping
+    public ResponseEntity<List<DinnerResponseDto>> getAllDinners() {
+        List<DinnerResponseDto> response = dinnerService.getAllDinners();
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/menu-items")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DinnerMenuItemResponseDto> createDinnerMenuItem(
