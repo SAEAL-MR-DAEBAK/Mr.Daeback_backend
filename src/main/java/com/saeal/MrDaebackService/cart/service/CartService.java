@@ -5,6 +5,9 @@ import com.saeal.MrDaebackService.cart.enums.CartStatus;
 import com.saeal.MrDaebackService.cart.dto.request.CreateCartRequest;
 import com.saeal.MrDaebackService.cart.dto.response.CartResponseDto;
 import com.saeal.MrDaebackService.cart.repository.CartRepository;
+import com.saeal.MrDaebackService.order.dto.response.OrderResponseDto;
+import com.saeal.MrDaebackService.order.service.OrderService;
+import com.saeal.MrDaebackService.order.domain.Order;
 import com.saeal.MrDaebackService.product.domain.Product;
 import com.saeal.MrDaebackService.product.repository.ProductRepository;
 import com.saeal.MrDaebackService.user.domain.User;
@@ -26,6 +29,7 @@ public class CartService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final UserService userService;
+    private final OrderService orderService;
 
     @Transactional
     public CartResponseDto createCart(CreateCartRequest request) {
@@ -74,5 +78,24 @@ public class CartService {
         return cartRepository.findByUserIdAndStatus(userId, CartStatus.OPEN).stream()
                 .map(CartResponseDto::from)
                 .toList();
+    }
+
+    @Transactional
+    public OrderResponseDto checkout(UUID cartId) {
+        UUID userId = userService.getCurrentUserId();
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new IllegalArgumentException("Cart not found: " + cartId));
+
+        if (!cart.getUser().getId().equals(userId)) {
+            throw new IllegalStateException("Cart does not belong to current user");
+        }
+        if (cart.getStatus() != CartStatus.OPEN) {
+            throw new IllegalStateException("Cart is not open");
+        }
+
+        Order order = orderService.createOrderFromCart(cart);
+        cart.setStatus(CartStatus.CHECKED_OUT);
+        Order savedOrder = orderService.saveOrder(order);
+        return OrderResponseDto.from(savedOrder);
     }
 }
