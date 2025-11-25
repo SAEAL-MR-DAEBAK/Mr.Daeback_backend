@@ -26,6 +26,4 @@
 ┃ ┣ 📂 security — JWT 필터, UserDetails, 인증/인가 예외 핸들러
 ┃ ┣ 📂 servingStyle — 서빙스타일 관련 도메인
 ┃ ┣ 📂 user — 사용자 도메인 (유저 정보, 통계, 프로필 등)
-
-
 ┗ 📂 resources — 설정 파일 (e.g. application.yml) 및 정적 자원
