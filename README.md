@@ -7,9 +7,10 @@
 - Infra: AWS EC2, RDS
 - Auth: JWT
 
+## 📁 프로젝트 ERD
+<img width="906" height="1346" alt="Image" src="https://github.com/user-attachments/assets/4e8f2fa3-07fc-4c7f-849a-3d7b5d5500cd" />
 
 ## 📁 프로젝트 구조
-
 
 ```
 📂 main
