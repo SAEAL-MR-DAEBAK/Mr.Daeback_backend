@@ -8,6 +8,9 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class ServingStyleService {
@@ -27,5 +30,12 @@ public class ServingStyleService {
 
         ServingStyle saved = servingStyleRepository.save(servingStyle);
         return ServingStyleResponseDto.from(saved);
+    }
+
+    @Transactional
+    public List<ServingStyleResponseDto> getAllServingStyles() {
+        return servingStyleRepository.findAll().stream()
+                .map(ServingStyleResponseDto::from)
+                .collect(Collectors.toList());
     }
 }
