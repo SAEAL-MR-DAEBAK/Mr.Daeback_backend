@@ -130,12 +130,12 @@ public class UserService {
 
         UserCard newCard = UserCard.builder()
                 .user(user)
-                .cardAlias(request.getCardAlias())
                 .cardBrand(request.getCardBrand())
                 .cardNumber(request.getCardNumber())
                 .expiryMonth(request.getExpiryMonth())
                 .expiryYear(request.getExpiryYear())
                 .cardHolderName(request.getCardHolderName())
+                .cvv(request.getCvv())
                 .isDefault(request.getIsDefault() != null && request.getIsDefault())
                 .build();
 

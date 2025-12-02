@@ -24,13 +24,10 @@ public class UserCard {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, length = 100)
-    private String cardAlias;
-
     @Column(nullable = false, length = 50)
     private String cardBrand;
 
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 16)
     private String cardNumber;
 
     @Column(nullable = false)
@@ -41,6 +38,9 @@ public class UserCard {
 
     @Column(length = 100)
     private String cardHolderName;
+
+    @Column(nullable = false, length = 3)
+    private String cvv;
 
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean isDefault;
