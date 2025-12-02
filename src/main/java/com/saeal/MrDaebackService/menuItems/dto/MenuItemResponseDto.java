@@ -15,6 +15,7 @@ public class MenuItemResponseDto {
     private String id;
     private String name;
     private Integer stock;
+    private String unitType;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -23,6 +24,7 @@ public class MenuItemResponseDto {
                 menuItems.getId().toString(),
                 menuItems.getName(),
                 menuItems.getStock(),
+                menuItems.getUnitType(),
                 menuItems.getCreatedAt(),
                 menuItems.getUpdatedAt()
         );

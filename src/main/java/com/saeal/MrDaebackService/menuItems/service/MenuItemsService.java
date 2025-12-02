@@ -26,6 +26,7 @@ public class MenuItemsService {
         MenuItems menuItem = MenuItems.builder()
                 .name(request.getName())
                 .stock(request.getStock())
+                .unitType(request.getUnitType())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();

@@ -26,6 +26,9 @@ public class MenuItems {
     @Column(nullable = false)
     private Integer stock; // 재고 수량
 
+    @Column(length = 50)
+    private String unitType;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
