@@ -7,6 +7,7 @@ import com.saeal.MrDaebackService.dinner.dto.response.DinnerResponseDto;
 import com.saeal.MrDaebackService.dinner.service.DinnerService;
 import com.saeal.MrDaebackService.menuItems.dto.CreateMenuItemRequest;
 import com.saeal.MrDaebackService.menuItems.dto.MenuItemResponseDto;
+import com.saeal.MrDaebackService.menuItems.dto.UpdateMenuItemStockRequest;
 import com.saeal.MrDaebackService.menuItems.service.MenuItemsService;
 import com.saeal.MrDaebackService.servingStyle.dto.request.CreateServingStyleRequest;
 import com.saeal.MrDaebackService.servingStyle.dto.response.ServingStyleResponseDto;
@@ -18,10 +19,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -69,5 +69,16 @@ public class AdminController {
     ) {
         DinnerMenuItemResponseDto response = dinnerService.createDinnerMenuItem(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PatchMapping("/menu-items/{menuItemId}/stock")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "MenuItem 재고 수정", description = "MenuItem 재고를 수정합니다. 관리자용 API")
+    public ResponseEntity<MenuItemResponseDto> updateMenuItemStock(
+            @PathVariable UUID menuItemId,
+            @Valid @RequestBody UpdateMenuItemStockRequest request
+    ) {
+        MenuItemResponseDto response = menuItemsService.updateMenuItemStock(menuItemId, request);
+        return ResponseEntity.ok(response);
     }
 }
