@@ -54,7 +54,7 @@ public class ProductController {
     }
 
     @PatchMapping("/{productId}/menu-items/{menuItemId}")
-    @Operation(summary = "Product의 MenuItem 수량/단가 수정", description = "특정 Product에 포함된 MenuItem의 수량을 변경하고 단가도 선택적으로 수정합니다.")
+    @Operation(summary = "Product의 MenuItem 수량 수정", description = "특정 Product에 포함된 MenuItem의 수량만 변경합니다.")
     public ResponseEntity<ProductMenuItemResponseDto> updateProductMenuItem(
             @PathVariable UUID productId,
             @PathVariable UUID menuItemId,
@@ -62,5 +62,15 @@ public class ProductController {
     ) {
         ProductMenuItemResponseDto response = productService.updateProductMenuItem(productId, menuItemId, request);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{productId}/menu-items/{menuItemId}")
+    @Operation(summary = "Product에서 MenuItem 제거", description = "특정 Product에 포함된 MenuItem을 제거합니다.")
+    public ResponseEntity<Void> removeProductMenuItem(
+            @PathVariable UUID productId,
+            @PathVariable UUID menuItemId
+    ) {
+        productService.removeProductMenuItem(productId, menuItemId);
+        return ResponseEntity.noContent().build();
     }
 }

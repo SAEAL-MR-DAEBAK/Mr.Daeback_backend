@@ -13,6 +13,7 @@ import com.saeal.MrDaebackService.product.repository.ProductRepository;
 import com.saeal.MrDaebackService.user.domain.User;
 import com.saeal.MrDaebackService.user.repository.UserRepository;
 import com.saeal.MrDaebackService.user.service.UserService;
+import com.saeal.MrDaebackService.cart.dto.response.CartMenuItemsTotalResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -97,5 +98,27 @@ public class CartService {
         cart.setStatus(CartStatus.CHECKED_OUT);
         Order savedOrder = orderService.saveOrder(order);
         return OrderResponseDto.from(savedOrder);
+    }
+
+    @Transactional
+    public CartMenuItemsTotalResponse calculateCartMenuItemsTotal(UUID cartId) {
+        UUID userId = userService.getCurrentUserId();
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new IllegalArgumentException("Cart not found: " + cartId));
+
+        if (!cart.getUser().getId().equals(userId)) {
+            throw new IllegalStateException("Cart does not belong to current user");
+        }
+
+        BigDecimal total = BigDecimal.ZERO;
+        for (Product product : cart.getProducts()) {
+            int cartQuantity = cart.getProductQuantities().getOrDefault(product.getId(), 1);
+            BigDecimal productMenuItemsTotal = product.getProductMenuItems().stream()
+                    .map(pmi -> pmi.getLineTotal() == null ? BigDecimal.ZERO : pmi.getLineTotal())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            total = total.add(productMenuItemsTotal.multiply(BigDecimal.valueOf(cartQuantity)));
+        }
+
+        return new CartMenuItemsTotalResponse(cart.getId().toString(), total);
     }
 }

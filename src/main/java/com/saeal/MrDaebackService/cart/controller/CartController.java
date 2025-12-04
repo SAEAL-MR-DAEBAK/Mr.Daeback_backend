@@ -1,6 +1,7 @@
 package com.saeal.MrDaebackService.cart.controller;
 
 import com.saeal.MrDaebackService.cart.dto.request.CreateCartRequest;
+import com.saeal.MrDaebackService.cart.dto.response.CartMenuItemsTotalResponse;
 import com.saeal.MrDaebackService.cart.dto.response.CartResponseDto;
 import com.saeal.MrDaebackService.cart.service.CartService;
 import com.saeal.MrDaebackService.order.dto.response.OrderResponseDto;
@@ -57,5 +58,15 @@ public class CartController {
     ) {
         OrderResponseDto response = cartService.checkout(cartId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/{cartId}/menu-items/total-price")
+    @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "카트 내 Product의 MenuItem 가격 총합 반환", description = "선택한 카트에 담긴 Product의 MenuItem 라인합을 카트 수량을 반영하여 합산합니다.")
+    public ResponseEntity<CartMenuItemsTotalResponse> getCartMenuItemsTotal(
+            @PathVariable UUID cartId
+    ) {
+        CartMenuItemsTotalResponse response = cartService.calculateCartMenuItemsTotal(cartId);
+        return ResponseEntity.ok(response);
     }
 }

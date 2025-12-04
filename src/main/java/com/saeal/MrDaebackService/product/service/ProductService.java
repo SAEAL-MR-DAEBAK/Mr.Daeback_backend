@@ -106,10 +106,8 @@ public class ProductService {
                 .orElseThrow(() -> new IllegalArgumentException("Menu item not found: " + menuItemId));
 
         int quantity = request.getQuantity();
-        BigDecimal unitPrice = request.getUnitPrice();
-        if (unitPrice == null) {
-            unitPrice = menuItem.getUnitPrice() == null ? BigDecimal.ZERO : menuItem.getUnitPrice();
-        }
+        // Always align product_menu_item unit price with the source menu item price to keep consistency.
+        BigDecimal unitPrice = menuItem.getUnitPrice() == null ? BigDecimal.ZERO : menuItem.getUnitPrice();
         BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
 
         ProductMenuItem productMenuItem = ProductMenuItem.builder()
@@ -144,16 +142,18 @@ public class ProductService {
                 .orElseThrow(() -> new IllegalArgumentException("Menu item not found in product: " + menuItemId));
 
         int newQuantity = request.getQuantity();
-        BigDecimal unitPrice = request.getUnitPrice() != null ? request.getUnitPrice() : target.getUnitPrice();
+        BigDecimal unitPrice = target.getUnitPrice();
         if (unitPrice == null) {
-            unitPrice = BigDecimal.ZERO;
+            unitPrice = target.getMenuItem().getUnitPrice();
+        }
+        if (unitPrice == null) {
+            throw new IllegalStateException("Unit price is missing for menu item " + menuItemId);
         }
 
         BigDecimal oldLineTotal = target.getLineTotal() == null ? BigDecimal.ZERO : target.getLineTotal();
         BigDecimal newLineTotal = unitPrice.multiply(BigDecimal.valueOf(newQuantity));
 
         target.setQuantity(newQuantity);
-        target.setUnitPrice(unitPrice);
         target.setLineTotal(newLineTotal);
 
         BigDecimal currentTotal = product.getTotalPrice() == null ? BigDecimal.ZERO : product.getTotalPrice();
@@ -166,5 +166,24 @@ public class ProductService {
                 .findFirst()
                 .map(ProductMenuItemResponseDto::from)
                 .orElseThrow(() -> new IllegalStateException("Updated menu item not found after save"));
+    }
+
+    @Transactional
+    public void removeProductMenuItem(UUID productId, UUID menuItemId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+
+        ProductMenuItem target = product.getProductMenuItems().stream()
+                .filter(pmi -> pmi.getMenuItem().getId().equals(menuItemId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Menu item not found in product: " + menuItemId));
+
+        BigDecimal lineTotal = target.getLineTotal() == null ? BigDecimal.ZERO : target.getLineTotal();
+        BigDecimal currentTotal = product.getTotalPrice() == null ? BigDecimal.ZERO : product.getTotalPrice();
+        BigDecimal newTotal = currentTotal.subtract(lineTotal);
+        product.setTotalPrice(newTotal.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : newTotal);
+
+        product.getProductMenuItems().remove(target); // orphanRemoval=true handles delete
+        productRepository.save(product);
     }
 }
