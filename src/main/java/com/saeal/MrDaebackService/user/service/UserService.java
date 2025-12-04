@@ -117,10 +117,32 @@ public class UserService {
             addresses = new ArrayList<>();
             user.setAddresses(addresses);
         }
-        addresses.add(address);
+        if (!addresses.contains(address)) {
+            addresses.add(address);
+        }
 
         return new ArrayList<>(addresses);
     }
+
+    @Transactional
+    public List<String> deleteAddressFromCurrentUser(String address) {
+        if (address == null || address.isBlank()) {
+            throw new IllegalArgumentException("Address must not be blank");
+        }
+
+        UUID userId = getCurrentUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        List<String> addresses = user.getAddresses();
+        if (addresses == null || !addresses.contains(address)) {
+            throw new IllegalArgumentException("Address not found: " + address);
+        }
+
+        addresses.remove(address);
+        return new ArrayList<>(addresses);
+    }
+
 
     @Transactional
     public UserCardResponseDto addCardForCurrentUser(AddCardRequest request) {
@@ -167,4 +189,16 @@ public class UserService {
         UUID userId = getCurrentUserId();
         return getCardsByUserId(userId);
     }
+
+    @Transactional
+    public void deleteCardForCurrentUser(UUID cardId) {
+        UUID userId = getCurrentUserId();
+        UserCard card = userCardRepository.findByUserId(userId).stream()
+                .filter(c -> c.getId().equals(cardId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Card not found: " + cardId));
+
+        userCardRepository.delete(card);
+    }
+
 }

@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -63,4 +64,19 @@ public class UserController {
         List<String> addresses = userService.getCurrentUserAddresses();
         return ResponseEntity.ok(addresses);
     }
+
+    @DeleteMapping("/addresses")
+    @Operation(summary = "주소 삭제", description = "현재 로그인한 사용자의 주소를 삭제합니다.")
+    public ResponseEntity<List<String>> deleteUserAddress(@Valid @RequestBody AddAddressRequest request) {
+        List<String> addresses = userService.deleteAddressFromCurrentUser(request.getAddress());
+        return ResponseEntity.ok(addresses);
+    }
+
+    @DeleteMapping("/cards/{cardId}")
+    @Operation(summary = "결제수단 삭제", description = "현재 로그인한 사용자의 결제수단을 삭제합니다.")
+    public ResponseEntity<Void> deleteUserCard(@PathVariable UUID cardId) {
+        userService.deleteCardForCurrentUser(cardId);
+        return ResponseEntity.noContent().build();
+    }
+
 }

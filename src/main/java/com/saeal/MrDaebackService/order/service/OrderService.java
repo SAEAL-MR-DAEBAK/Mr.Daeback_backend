@@ -50,8 +50,8 @@ public class OrderService {
                 .deliveryFee(deliveryFee)
                 .grandTotal(grandTotal)
                 .currency("KRW")
-                .orderStatus(OrderStatus.PLACED)
-                .paymentStatus(PaymentStatus.SUCCEEDED)
+                .orderStatus(OrderStatus.PENDING_APPROVAL) // 관리자 승인 대기
+                .paymentStatus(PaymentStatus.PENDING) // 관리자 승인 전까지는 PENDING
                 .deliveryStatus(DeliveryStatus.READY)
                 .deliveryMethod(cart.getDeliveryMethod())
                 .deliveryAddress(cart.getDeliveryAddress())
@@ -94,6 +94,67 @@ public class OrderService {
         return orderRepository.findByUserId(userId).stream()
                 .map(OrderResponseDto::from)
                 .toList();
+    }
+
+    @Transactional
+    public List<OrderResponseDto> getAllOrders() {
+        return orderRepository.findAll().stream()
+                .map(OrderResponseDto::from)
+                .toList();
+    }
+
+    @Transactional
+    public List<OrderResponseDto> getRecentOrders(int limit) {
+        return orderRepository.findAll().stream()
+                .sorted((a, b) -> b.getOrderedAt().compareTo(a.getOrderedAt())) // 최신순 정렬
+                .limit(limit)
+                .map(OrderResponseDto::from)
+                .toList();
+    }
+
+    @Transactional
+    public OrderResponseDto getOrderById(UUID orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+        return OrderResponseDto.from(order);
+    }
+
+    @Transactional
+    public OrderResponseDto approveOrder(UUID orderId, boolean approved, String rejectionReason) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+
+        if (approved) {
+            order.setOrderStatus(OrderStatus.APPROVED);
+            order.setPaymentStatus(PaymentStatus.SUCCEEDED);
+            order.setRejectionReason(null);
+        } else {
+            if (rejectionReason == null || rejectionReason.isBlank()) {
+                throw new IllegalArgumentException("Rejection reason is required when rejecting an order");
+            }
+            order.setOrderStatus(OrderStatus.REJECTED);
+            order.setPaymentStatus(PaymentStatus.FAILED);
+            order.setRejectionReason(rejectionReason);
+        }
+
+        order.setUpdatedAt(LocalDateTime.now());
+        Order saved = orderRepository.save(order);
+        return OrderResponseDto.from(saved);
+    }
+
+    @Transactional
+    public OrderResponseDto updateDeliveryStatus(UUID orderId, DeliveryStatus deliveryStatus) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+
+        if (order.getOrderStatus() != OrderStatus.APPROVED) {
+            throw new IllegalStateException("Only approved orders can have delivery status updated");
+        }
+
+        order.setDeliveryStatus(deliveryStatus);
+        order.setUpdatedAt(LocalDateTime.now());
+        Order saved = orderRepository.save(order);
+        return OrderResponseDto.from(saved);
     }
 
     private String generateOrderNumber() {

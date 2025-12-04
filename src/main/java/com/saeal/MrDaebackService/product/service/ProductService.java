@@ -186,4 +186,13 @@ public class ProductService {
         product.getProductMenuItems().remove(target); // orphanRemoval=true handles delete
         productRepository.save(product);
     }
+
+    @Transactional
+    public void deleteProduct(UUID productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+        
+        // ProductMenuItem은 orphanRemoval=true로 자동 삭제됨
+        productRepository.delete(product);
+    }
 }

@@ -73,4 +73,13 @@ public class ProductController {
         productService.removeProductMenuItem(productId, menuItemId);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/{productId}")
+    @Operation(summary = "Product 삭제", description = "특정 Product를 삭제합니다. ProductMenuItem도 함께 삭제됩니다.")
+    public ResponseEntity<Void> deleteProduct(
+            @PathVariable UUID productId
+    ) {
+        productService.deleteProduct(productId);
+        return ResponseEntity.noContent().build();
+    }
 }
