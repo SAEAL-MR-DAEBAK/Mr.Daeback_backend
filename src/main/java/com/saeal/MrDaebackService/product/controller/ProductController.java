@@ -1,6 +1,7 @@
 package com.saeal.MrDaebackService.product.controller;
 
 import com.saeal.MrDaebackService.product.dto.request.CreateProductRequest;
+import com.saeal.MrDaebackService.product.dto.request.CreateAdditionalMenuProductRequest;
 import com.saeal.MrDaebackService.product.dto.request.AddProductMenuItemRequest;
 import com.saeal.MrDaebackService.product.dto.request.UpdateProductMenuItemRequest;
 import com.saeal.MrDaebackService.product.dto.response.ProductMenuItemResponseDto;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -32,6 +34,23 @@ public class ProductController {
     ) {
         ProductResponseDto response = productService.createProduct(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/createAdditionalMenuProduct")
+    @Operation(summary = "추가 메뉴 상품 생성", description = "추가 메뉴를 별도 Product로 생성합니다.")
+    public ResponseEntity<?> createAdditionalMenuProduct(
+            @Valid @RequestBody CreateAdditionalMenuProductRequest request
+    ) {
+        try {
+            ProductResponseDto response = productService.createAdditionalMenuProduct(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "추가 메뉴 Product 생성 중 오류가 발생했습니다: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/{productId}/menu-items")

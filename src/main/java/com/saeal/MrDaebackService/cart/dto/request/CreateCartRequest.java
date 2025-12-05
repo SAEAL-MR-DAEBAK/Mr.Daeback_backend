@@ -7,11 +7,13 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
+@Setter
 @NoArgsConstructor
 public class CreateCartRequest {
 
@@ -28,6 +30,7 @@ public class CreateCartRequest {
     private LocalDateTime expiresAt;
 
     @Getter
+    @Setter
     @NoArgsConstructor
     public static class CartItemRequest {
         @NotNull

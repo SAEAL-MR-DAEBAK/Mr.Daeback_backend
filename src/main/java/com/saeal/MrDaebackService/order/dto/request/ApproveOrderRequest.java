@@ -15,3 +15,5 @@ public class ApproveOrderRequest {
     private String rejectionReason; // 거절 사유 (거절 시 필수)
 }
 
+
+

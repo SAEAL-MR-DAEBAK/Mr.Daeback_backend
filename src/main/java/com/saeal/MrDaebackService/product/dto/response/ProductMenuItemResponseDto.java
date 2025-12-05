@@ -18,9 +18,24 @@ public class ProductMenuItemResponseDto {
     private BigDecimal lineTotal;
 
     public static ProductMenuItemResponseDto from(ProductMenuItem productMenuItem) {
+        // null 체크 추가
+        if (productMenuItem == null) {
+            return null;
+        }
+        
+        // menuItem이 null일 수 있으므로 체크
+        String menuItemId = null;
+        String menuItemName = null;
+        if (productMenuItem.getMenuItem() != null) {
+            menuItemId = productMenuItem.getMenuItem().getId() != null 
+                    ? productMenuItem.getMenuItem().getId().toString() 
+                    : null;
+            menuItemName = productMenuItem.getMenuItem().getName();
+        }
+        
         return new ProductMenuItemResponseDto(
-                productMenuItem.getMenuItem().getId().toString(),
-                productMenuItem.getMenuItem().getName(),
+                menuItemId,
+                menuItemName,
                 productMenuItem.getQuantity(),
                 productMenuItem.getUnitPrice(),
                 productMenuItem.getLineTotal()

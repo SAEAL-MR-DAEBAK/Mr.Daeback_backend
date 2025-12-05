@@ -10,13 +10,10 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class CreateProductRequest {
+public class CreateAdditionalMenuProductRequest {
 
     @NotNull
-    private String dinnerId;
-
-    @NotNull
-    private String servingStyleId;
+    private String menuItemId;
 
     @NotNull
     @Min(1)
@@ -24,8 +21,7 @@ public class CreateProductRequest {
 
     private String memo;
 
-    private String productName;
-
     @NotBlank
     private String address;
 }
+

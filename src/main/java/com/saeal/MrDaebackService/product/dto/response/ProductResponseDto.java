@@ -30,13 +30,18 @@ public class ProductResponseDto {
                 .map(ProductMenuItemResponseDto::from)
                 .collect(Collectors.toList());
 
+        String dinnerId = product.getDinner() != null ? product.getDinner().getId().toString() : null;
+        String dinnerName = product.getDinner() != null ? product.getDinner().getDinnerName() : null;
+        String servingStyleId = product.getServingStyle() != null ? product.getServingStyle().getId().toString() : null;
+        String servingStyleName = product.getServingStyle() != null ? product.getServingStyle().getStyleName() : null;
+
         return new ProductResponseDto(
                 product.getId().toString(),
                 product.getProductName(),
-                product.getDinner().getId().toString(),
-                product.getDinner().getDinnerName(),
-                product.getServingStyle().getId().toString(),
-                product.getServingStyle().getStyleName(),
+                dinnerId,
+                dinnerName,
+                servingStyleId,
+                servingStyleName,
                 product.getTotalPrice(),
                 product.getQuantity(),
                 product.getMemo(),

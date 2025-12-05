@@ -8,7 +8,9 @@ import com.saeal.MrDaebackService.product.domain.Product;
 import com.saeal.MrDaebackService.product.domain.ProductMenuItem;
 import com.saeal.MrDaebackService.product.dto.request.AddProductMenuItemRequest;
 import com.saeal.MrDaebackService.product.dto.request.CreateProductRequest;
+import com.saeal.MrDaebackService.product.dto.request.CreateAdditionalMenuProductRequest;
 import com.saeal.MrDaebackService.product.dto.request.UpdateProductMenuItemRequest;
+import com.saeal.MrDaebackService.product.enums.ProductType;
 import com.saeal.MrDaebackService.product.dto.response.ProductResponseDto;
 import com.saeal.MrDaebackService.product.dto.response.ProductMenuItemResponseDto;
 import com.saeal.MrDaebackService.product.repository.ProductRepository;
@@ -78,6 +80,42 @@ public class ProductService {
                     .build();
             product.getProductMenuItems().add(productMenuItem);
         }
+
+        Product savedProduct = productRepository.save(product);
+        return ProductResponseDto.from(savedProduct);
+    }
+
+    @Transactional
+    public ProductResponseDto createAdditionalMenuProduct(CreateAdditionalMenuProductRequest request) {
+        UUID menuItemId = UUID.fromString(request.getMenuItemId());
+        MenuItems menuItem = menuItemsRepository.findById(menuItemId)
+                .orElseThrow(() -> new IllegalArgumentException("Menu item not found: " + menuItemId));
+
+        int quantity = request.getQuantity();
+        BigDecimal unitPrice = menuItem.getUnitPrice();
+        BigDecimal totalPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
+
+        String productName = "추가 메뉴: " + menuItem.getName();
+
+        Product product = Product.builder()
+                .productType(ProductType.ADDITIONAL_MENU_PRODUCT)
+                .dinner(null)
+                .servingStyle(null)
+                .productName(productName)
+                .totalPrice(totalPrice)
+                .quantity(quantity)
+                .memo(request.getMemo())
+                .address(request.getAddress())
+                .build();
+
+        ProductMenuItem productMenuItem = ProductMenuItem.builder()
+                .product(product)
+                .menuItem(menuItem)
+                .quantity(quantity)
+                .unitPrice(unitPrice)
+                .lineTotal(totalPrice)
+                .build();
+        product.getProductMenuItems().add(productMenuItem);
 
         Product savedProduct = productRepository.save(product);
         return ProductResponseDto.from(savedProduct);
@@ -194,5 +232,13 @@ public class ProductService {
         
         // ProductMenuItem은 orphanRemoval=true로 자동 삭제됨
         productRepository.delete(product);
+    }
+
+    @Transactional
+    public void updateProductMemo(UUID productId, String memo) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+        product.setMemo(memo);
+        productRepository.save(product);
     }
 }

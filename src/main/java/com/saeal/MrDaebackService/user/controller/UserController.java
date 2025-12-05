@@ -3,6 +3,7 @@ package com.saeal.MrDaebackService.user.controller;
 import com.saeal.MrDaebackService.user.dto.request.RegisterDto;
 import com.saeal.MrDaebackService.user.dto.request.AddAddressRequest;
 import com.saeal.MrDaebackService.user.dto.request.AddCardRequest;
+import com.saeal.MrDaebackService.user.dto.request.UpdateUserProfileRequest;
 import com.saeal.MrDaebackService.user.dto.response.UserCardResponseDto;
 import com.saeal.MrDaebackService.user.dto.response.UserResponseDto;
 import com.saeal.MrDaebackService.user.service.UserService;
@@ -77,6 +78,13 @@ public class UserController {
     public ResponseEntity<Void> deleteUserCard(@PathVariable UUID cardId) {
         userService.deleteCardForCurrentUser(cardId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/me")
+    @Operation(summary = "회원정보 수정", description = "현재 로그인한 사용자의 회원정보를 수정합니다.")
+    public ResponseEntity<UserResponseDto> updateCurrentUserProfile(@Valid @RequestBody UpdateUserProfileRequest request) {
+        UserResponseDto response = userService.updateCurrentUserProfile(request);
+        return ResponseEntity.ok(response);
     }
 
 }

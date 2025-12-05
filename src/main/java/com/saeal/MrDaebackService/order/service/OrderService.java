@@ -10,7 +10,7 @@ import com.saeal.MrDaebackService.order.enums.PaymentStatus;
 import com.saeal.MrDaebackService.order.dto.response.OrderResponseDto;
 import com.saeal.MrDaebackService.order.repository.OrderRepository;
 import com.saeal.MrDaebackService.product.domain.Product;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -51,7 +51,7 @@ public class OrderService {
                 .grandTotal(grandTotal)
                 .currency("KRW")
                 .orderStatus(OrderStatus.PENDING_APPROVAL) // 관리자 승인 대기
-                .paymentStatus(PaymentStatus.PENDING) // 관리자 승인 전까지는 PENDING
+                .paymentStatus(PaymentStatus.SUCCEEDED) // 결제 완료
                 .deliveryStatus(DeliveryStatus.READY)
                 .deliveryMethod(cart.getDeliveryMethod())
                 .deliveryAddress(cart.getDeliveryAddress())
@@ -89,33 +89,60 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<OrderResponseDto> getOrdersByUserId(UUID userId) {
-        return orderRepository.findByUserId(userId).stream()
+        List<Order> orders = orderRepository.findByUserIdWithDetails(userId);
+        initializeProductMenuItems(orders);
+        return orders.stream()
                 .map(OrderResponseDto::from)
                 .toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<OrderResponseDto> getAllOrders() {
-        return orderRepository.findAll().stream()
+        List<Order> orders = orderRepository.findAllWithDetails();
+        initializeProductMenuItems(orders);
+        return orders.stream()
                 .map(OrderResponseDto::from)
                 .toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<OrderResponseDto> getRecentOrders(int limit) {
-        return orderRepository.findAll().stream()
-                .sorted((a, b) -> b.getOrderedAt().compareTo(a.getOrderedAt())) // 최신순 정렬
+        List<Order> orders = orderRepository.findAllWithDetails();
+        initializeProductMenuItems(orders);
+        return orders.stream()
                 .limit(limit)
                 .map(OrderResponseDto::from)
                 .toList();
     }
 
+    /**
+     * Order 목록의 모든 Product의 productMenuItems를 초기화합니다.
+     * MultipleBagFetchException을 방지하기 위해 별도로 처리합니다.
+     */
+    private void initializeProductMenuItems(List<Order> orders) {
+        orders.forEach(order -> {
+            if (order.getOrderItems() != null) {
+                order.getOrderItems().forEach(orderItem -> {
+                    if (orderItem != null && orderItem.getProduct() != null) {
+                        orderItem.getProduct().getProductMenuItems().size();
+                        orderItem.getProduct().getProductMenuItems().forEach(pmi -> {
+                            if (pmi != null && pmi.getMenuItem() != null) {
+                                pmi.getMenuItem().getName();
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+
     @Transactional
     public OrderResponseDto getOrderById(UUID orderId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithDetails(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+        initializeProductMenuItems(List.of(order));
         return OrderResponseDto.from(order);
     }
 
