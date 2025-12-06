@@ -40,7 +40,11 @@ public class LlmResponseDto {
         private String action;          // 액션 (add, remove, increase, decrease)
         private Integer menuItemQuantity; // 메뉴 아이템 수량 변경량
 
-        // ★ 특별 요청사항
+        // ★ 특별 요청사항/메모
         private String specialRequest;  // 특별 요청 (예: "젓가락 빼주세요")
+        private String memo;            // 메모/요청사항 (예: "일회용 수저", "문 앞에 놔주세요")
+
+        // ★ 복수 디너 처리
+        private String pendingMenuName; // 대기 중인 다음 메뉴 이름 (2개 동시 언급 시)
     }
 }
