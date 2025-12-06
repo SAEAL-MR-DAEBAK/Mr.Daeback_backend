@@ -5,19 +5,25 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
+import lombok.Setter;
 
 @Getter
+@Setter
 @NoArgsConstructor
-public class AddProductMenuItemRequest {
+public class CreateAdditionalMenuProductRequest {
 
-    @NotBlank
+    @NotNull
     private String menuItemId;
 
     @NotNull
     @Min(1)
     private Integer quantity;
 
-    private BigDecimal unitPrice;
+    private String memo;
+
+    @NotBlank
+    private String address;
 }
+
+
+

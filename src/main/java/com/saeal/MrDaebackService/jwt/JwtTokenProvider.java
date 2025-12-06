@@ -3,7 +3,6 @@ package com.saeal.MrDaebackService.jwt;
 import com.saeal.MrDaebackService.security.JwtUserDetails;
 import com.saeal.MrDaebackService.user.domain.User;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -96,8 +95,9 @@ public class JwtTokenProvider {
     private boolean validateToken(String token, Key key, String expectedType) {
         try {
             Claims claims = parseClaims(token, key);
-            return expectedType.equals(claims.get("tokenType", String.class));
-        } catch (JwtException | IllegalArgumentException e) {
+            String tokenType = claims.get("tokenType", String.class);
+            return expectedType.equals(tokenType);
+        } catch (Exception e) {
             return false;
         }
     }

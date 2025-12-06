@@ -13,13 +13,11 @@ import com.saeal.MrDaebackService.product.repository.ProductRepository;
 import com.saeal.MrDaebackService.user.domain.User;
 import com.saeal.MrDaebackService.user.repository.UserRepository;
 import com.saeal.MrDaebackService.user.service.UserService;
-import com.saeal.MrDaebackService.cart.dto.response.CartMenuItemsTotalResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -32,6 +30,13 @@ public class CartService {
     private final UserService userService;
     private final OrderService orderService;
 
+    /**
+     * 장바구니 생성
+     * - GUI: CheckoutStep에서 결제 전 호출
+     * - LLM: VoiceOrderService CONFIRM_ORDER에서 호출
+     *
+     * unitPrice: 프론트엔드에서 계산한 가격 사용 (없으면 Product.totalPrice 사용)
+     */
     @Transactional
     public CartResponseDto createCart(CreateCartRequest request) {
         UUID userId = userService.getCurrentUserId();
@@ -57,13 +62,17 @@ public class CartService {
                     .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
 
             Integer quantity = itemRequest.getQuantity();
-            BigDecimal unitPrice = product.getTotalPrice();
+            // 프론트엔드에서 전달한 unitPrice 사용 (없으면 Product.totalPrice 사용)
+            BigDecimal unitPrice = itemRequest.getUnitPrice() != null
+                    ? itemRequest.getUnitPrice()
+                    : product.getTotalPrice();
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
 
             subtotal = subtotal.add(lineTotal);
 
             cart.getProducts().add(product);
             cart.getProductQuantities().put(product.getId(), quantity);
+            cart.getProductUnitPrices().put(product.getId(), unitPrice);
         }
 
         cart.setSubtotal(subtotal);
@@ -73,14 +82,11 @@ public class CartService {
         return CartResponseDto.from(saved);
     }
 
-    @Transactional
-    public List<CartResponseDto> getCartsForCurrentUser() {
-        UUID userId = userService.getCurrentUserId();
-        return cartRepository.findByUserIdAndStatus(userId, CartStatus.OPEN).stream()
-                .map(CartResponseDto::from)
-                .toList();
-    }
-
+    /**
+     * 장바구니 결제 (Order 생성)
+     * - GUI: CheckoutStep에서 결제 버튼 클릭 시 호출
+     * - LLM: VoiceOrderService CONFIRM_ORDER에서 호출
+     */
     @Transactional
     public OrderResponseDto checkout(UUID cartId) {
         UUID userId = userService.getCurrentUserId();
@@ -98,27 +104,5 @@ public class CartService {
         cart.setStatus(CartStatus.CHECKED_OUT);
         Order savedOrder = orderService.saveOrder(order);
         return OrderResponseDto.from(savedOrder);
-    }
-
-    @Transactional
-    public CartMenuItemsTotalResponse calculateCartMenuItemsTotal(UUID cartId) {
-        UUID userId = userService.getCurrentUserId();
-        Cart cart = cartRepository.findById(cartId)
-                .orElseThrow(() -> new IllegalArgumentException("Cart not found: " + cartId));
-
-        if (!cart.getUser().getId().equals(userId)) {
-            throw new IllegalStateException("Cart does not belong to current user");
-        }
-
-        BigDecimal total = BigDecimal.ZERO;
-        for (Product product : cart.getProducts()) {
-            int cartQuantity = cart.getProductQuantities().getOrDefault(product.getId(), 1);
-            BigDecimal productMenuItemsTotal = product.getProductMenuItems().stream()
-                    .map(pmi -> pmi.getLineTotal() == null ? BigDecimal.ZERO : pmi.getLineTotal())
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            total = total.add(productMenuItemsTotal.multiply(BigDecimal.valueOf(cartQuantity)));
-        }
-
-        return new CartMenuItemsTotalResponse(cart.getId().toString(), total);
     }
 }

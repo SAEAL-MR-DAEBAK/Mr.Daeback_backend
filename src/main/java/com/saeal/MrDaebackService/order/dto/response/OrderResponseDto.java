@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 public class OrderResponseDto {
     private String id;
     private String orderNumber;
+    private String userId; // 사용자 ID (검색용)
+    private String username; // 사용자명 (검색용)
     private OrderStatus orderStatus;
     private PaymentStatus paymentStatus;
     private DeliveryStatus deliveryStatus;
@@ -36,6 +38,7 @@ public class OrderResponseDto {
     private String recipientEmail;
     private String paymentTransactionId;
     private String memo;
+    private String rejectionReason; // 관리자 거절 사유
     private LocalDateTime orderedAt;
     private LocalDateTime updatedAt;
     private List<OrderItemResponseDto> items;
@@ -45,9 +48,15 @@ public class OrderResponseDto {
                 .map(OrderItemResponseDto::from)
                 .collect(Collectors.toList());
 
+        // User가 null일 수 있는 경우 대비 (기존 데이터 호환성)
+        String userId = order.getUser() != null ? order.getUser().getId().toString() : null;
+        String username = order.getUser() != null ? order.getUser().getUsername() : null;
+
         return new OrderResponseDto(
                 order.getId().toString(),
                 order.getOrderNumber(),
+                userId,
+                username,
                 order.getOrderStatus(),
                 order.getPaymentStatus(),
                 order.getDeliveryStatus(),
@@ -64,6 +73,7 @@ public class OrderResponseDto {
                 order.getRecipientEmail(),
                 order.getPaymentTransactionId(),
                 order.getMemo(),
+                order.getRejectionReason(),
                 order.getOrderedAt(),
                 order.getUpdatedAt(),
                 itemResponses

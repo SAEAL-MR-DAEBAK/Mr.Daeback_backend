@@ -52,6 +52,17 @@ public class Cart {
     @Builder.Default
     private Map<UUID, Integer> productQuantities = new HashMap<>();
 
+    // ★ 프론트엔드에서 계산한 단가 저장 (커스터마이징 반영된 가격)
+    @ElementCollection
+    @CollectionTable(
+            name = "cart_product_unit_price",
+            joinColumns = @JoinColumn(name = "cart_id", nullable = false)
+    )
+    @MapKeyColumn(name = "product_id")
+    @Column(name = "unit_price", nullable = false, precision = 18, scale = 2)
+    @Builder.Default
+    private Map<UUID, BigDecimal> productUnitPrices = new HashMap<>();
+
     @Column(nullable = false, precision = 18, scale = 2)
     private BigDecimal subtotal;
 

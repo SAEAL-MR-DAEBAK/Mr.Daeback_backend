@@ -4,6 +4,7 @@ import com.saeal.MrDaebackService.user.domain.User;
 import com.saeal.MrDaebackService.user.domain.UserCard;
 import com.saeal.MrDaebackService.user.dto.request.AddCardRequest;
 import com.saeal.MrDaebackService.user.dto.request.RegisterDto;
+import com.saeal.MrDaebackService.user.dto.request.UpdateUserProfileRequest;
 import com.saeal.MrDaebackService.user.dto.response.UserCardResponseDto;
 import com.saeal.MrDaebackService.user.dto.response.UserResponseDto;
 import com.saeal.MrDaebackService.user.enums.Authority;
@@ -24,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -117,10 +117,32 @@ public class UserService {
             addresses = new ArrayList<>();
             user.setAddresses(addresses);
         }
-        addresses.add(address);
+        if (!addresses.contains(address)) {
+            addresses.add(address);
+        }
 
         return new ArrayList<>(addresses);
     }
+
+    @Transactional
+    public List<String> deleteAddressFromCurrentUser(String address) {
+        if (address == null || address.isBlank()) {
+            throw new IllegalArgumentException("Address must not be blank");
+        }
+
+        UUID userId = getCurrentUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        List<String> addresses = user.getAddresses();
+        if (addresses == null || !addresses.contains(address)) {
+            throw new IllegalArgumentException("Address not found: " + address);
+        }
+
+        addresses.remove(address);
+        return new ArrayList<>(addresses);
+    }
+
 
     @Transactional
     public UserCardResponseDto addCardForCurrentUser(AddCardRequest request) {
@@ -159,7 +181,7 @@ public class UserService {
         List<UserCard> cards = userCardRepository.findByUserId(userId);
         return cards.stream()
                 .map(UserCardResponseDto::from)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional
@@ -167,4 +189,47 @@ public class UserService {
         UUID userId = getCurrentUserId();
         return getCardsByUserId(userId);
     }
+
+    @Transactional
+    public void deleteCardForCurrentUser(UUID cardId) {
+        UUID userId = getCurrentUserId();
+        UserCard card = userCardRepository.findByUserId(userId).stream()
+                .filter(c -> c.getId().equals(cardId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Card not found: " + cardId));
+
+        userCardRepository.delete(card);
+    }
+
+    @Transactional
+    public UserResponseDto updateCurrentUserProfile(UpdateUserProfileRequest request) {
+        UUID userId = getCurrentUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+        // 이메일 중복 체크 (다른 사용자가 사용 중인지 확인)
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            if (!request.getEmail().equalsIgnoreCase(user.getEmail())) {
+                if (userRepository.existsByEmailIgnoreCase(request.getEmail())) {
+                    throw new IllegalArgumentException("Email already exists");
+                }
+                user.setEmail(request.getEmail());
+            }
+        }
+
+        // displayName 업데이트
+        if (request.getDisplayName() != null) {
+            user.setDisplayName(request.getDisplayName().isBlank() ? null : request.getDisplayName());
+        }
+
+        // phoneNumber 업데이트
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+
+        user.setUpdatedAt(LocalDateTime.now());
+
+        return UserResponseDto.from(user);
+    }
+
 }

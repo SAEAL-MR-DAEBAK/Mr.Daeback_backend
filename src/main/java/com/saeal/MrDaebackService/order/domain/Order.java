@@ -99,6 +99,9 @@ public class Order {
     @Column(length = 255)
     private String memo;
 
+    @Column(length = 500)
+    private String rejectionReason; // 관리자 거절 사유
+
     @Column(nullable = false)
     private LocalDateTime orderedAt;
 
@@ -123,7 +126,7 @@ public class Order {
             currency = "KRW";
         }
         if (orderStatus == null) {
-            orderStatus = OrderStatus.PLACED;
+            orderStatus = OrderStatus.PENDING_APPROVAL; // 관리자 승인 대기 상태로 시작
         }
         if (paymentStatus == null) {
             paymentStatus = PaymentStatus.PENDING;
