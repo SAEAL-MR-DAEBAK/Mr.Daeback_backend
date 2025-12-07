@@ -89,15 +89,24 @@ public class MenuMatcher {
     );
 
     /**
-     * 캐시 로드
+     * 캐시 로드 (menuItems 포함)
      */
     public void loadCache() {
         if (cachedDinners == null) {
-            cachedDinners = dinnerService.getAllDinners();
+            cachedDinners = dinnerService.getAllDinnersWithMenuItems();
         }
         if (cachedStyles == null) {
             cachedStyles = servingStyleService.getAllServingStyles();
         }
+    }
+
+    /**
+     * 캐시 강제 새로고침
+     */
+    public void refreshCache() {
+        cachedDinners = null;
+        cachedStyles = null;
+        loadCache();
     }
 
     /**
@@ -252,6 +261,51 @@ public class MenuMatcher {
             return "그랜드, 디럭스";
         }
         return "심플, 그랜드, 디럭스";
+    }
+
+    /**
+     * ★ 디너의 메뉴 아이템 가격 조회 (한글/영문 매칭)
+     * @param dinnerId 디너 ID
+     * @param menuItemName 메뉴 아이템 이름 (한글 또는 영문)
+     * @return 메뉴 아이템 단가 (없으면 0)
+     */
+    public int getMenuItemPrice(String dinnerId, String menuItemName) {
+        loadCache();
+        if (dinnerId == null || menuItemName == null) return 0;
+
+        return cachedDinners.stream()
+                .filter(d -> d.getId().equals(dinnerId))
+                .findFirst()
+                .map(dinner -> {
+                    if (dinner.getMenuItems() == null) return 0;
+                    return dinner.getMenuItems().stream()
+                            .filter(mi -> isMatchingMenuItem(mi.getMenuItemName(), menuItemName))
+                            .findFirst()
+                            .map(mi -> mi.getUnitPrice() != null ? mi.getUnitPrice().intValue() : 0)
+                            .orElse(0);
+                })
+                .orElse(0);
+    }
+
+    /**
+     * ★ 디너의 메뉴 아이템 기본 수량 조회
+     */
+    public int getMenuItemDefaultQuantity(String dinnerId, String menuItemName) {
+        loadCache();
+        if (dinnerId == null || menuItemName == null) return 0;
+
+        return cachedDinners.stream()
+                .filter(d -> d.getId().equals(dinnerId))
+                .findFirst()
+                .map(dinner -> {
+                    if (dinner.getMenuItems() == null) return 0;
+                    return dinner.getMenuItems().stream()
+                            .filter(mi -> isMatchingMenuItem(mi.getMenuItemName(), menuItemName))
+                            .findFirst()
+                            .map(mi -> mi.getDefaultQuantity() != null ? mi.getDefaultQuantity() : 0)
+                            .orElse(0);
+                })
+                .orElse(0);
     }
 
     /**

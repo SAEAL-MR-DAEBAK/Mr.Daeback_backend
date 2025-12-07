@@ -5,7 +5,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -18,6 +20,9 @@ public class ChatRequestDto {
     private List<ChatMessageDto> conversationHistory;  // 대화 히스토리
     private List<OrderItemRequestDto> currentOrder;    // 현재 장바구니
     private String selectedAddress;              // 선택된 배달 주소
+    private String currentFlowState;             // 현재 주문 흐름 상태 (프론트에서 전달)
+    private LocalDateTime requestedDeliveryTime; // 희망 배달 시간
+    private String occasionType;                 // 기념일 종류 (생일, 기념일, 프로포즈 등)
 
     @Getter
     @Setter
@@ -41,5 +46,14 @@ public class ChatRequestDto {
         private int basePrice;      // dinner 기본 가격
         private int unitPrice;
         private int totalPrice;
+
+        // ★ 커스터마이징: 제외할 구성요소 목록
+        private List<String> excludedItems;
+
+        // ★ 구성요소 목록 (예: {"스테이크": 1, "샐러드": 1})
+        private Map<String, Integer> components;
+
+        // ★ 개별 상품 식별자 (수량 2개 이상일 때 각각 구분용)
+        private int itemIndex;
     }
 }

@@ -48,6 +48,8 @@ public class CartService {
                 .deliveryAddress(request.getDeliveryAddress())
                 .deliveryMethod(request.getDeliveryMethod())
                 .memo(request.getMemo())
+                .requestedDeliveryTime(request.getRequestedDeliveryTime())
+                .occasionType(request.getOccasionType())
                 .expiresAt(request.getExpiresAt())
                 .discountAmount(BigDecimal.ZERO)
                 .deliveryFee(BigDecimal.ZERO)

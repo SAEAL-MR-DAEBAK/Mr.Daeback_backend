@@ -14,6 +14,10 @@ public enum UserIntent {
     ADD_MORE_DINNER,        // 다른 디너 추가 주문하겠다
     NO_MORE_DINNER,         // 디너는 더 안 주문하겠다
 
+    // 구성요소 커스터마이징 (각 디너의 메뉴 구성 변경)
+    CUSTOMIZE_MENU,         // 구성요소 변경 (스테이크 빼줘, 샐러드 추가)
+    NO_CUSTOMIZE,           // 구성요소 변경 없음 (그대로 할게요)
+
     // 추가 메뉴 아이템 (스테이크, 와인 등)
     ADD_ADDITIONAL_MENU,    // 추가 메뉴 아이템 주문
     NO_ADDITIONAL_MENU,     // 추가 메뉴 없음
@@ -34,6 +38,11 @@ public enum UserIntent {
     EDIT_ORDER,             // 주문 수정
     REMOVE_ITEM,            // 개별 아이템 삭제
     CANCEL_ORDER,           // 주문 전체 취소
+
+    // 기념일/배달 시간
+    SET_OCCASION,           // 기념일 종류 설정 (생일, 기념일, 프로포즈 등)
+    SET_DELIVERY_TIME,      // 배달 시간 설정
+    ASK_RECOMMENDATION,     // 디너 추천 요청
 
     // 기타
     ASK_MENU_INFO,          // 메뉴 정보 문의

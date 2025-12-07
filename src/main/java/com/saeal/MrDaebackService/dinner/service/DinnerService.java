@@ -55,6 +55,26 @@ public class DinnerService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 모든 디너 조회 (menuItems 포함)
+     */
+    @Transactional
+    public List<DinnerResponseDto> getAllDinnersWithMenuItems() {
+        return dinnerRepository.findAll().stream()
+                .map(DinnerResponseDto::fromWithMenuItems)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 디너 ID로 조회 (menuItems 포함)
+     */
+    @Transactional
+    public DinnerResponseDto getDinnerByIdWithMenuItems(UUID dinnerId) {
+        Dinner dinner = dinnerRepository.findById(dinnerId)
+                .orElseThrow(() -> new IllegalArgumentException("Dinner not found: " + dinnerId));
+        return DinnerResponseDto.fromWithMenuItems(dinner);
+    }
+
     @Transactional
     public DinnerMenuItemResponseDto createDinnerMenuItem(CreateDinnerMenuItemRequest request) {
         UUID dinnerId = UUID.fromString(request.getDinnerId());
