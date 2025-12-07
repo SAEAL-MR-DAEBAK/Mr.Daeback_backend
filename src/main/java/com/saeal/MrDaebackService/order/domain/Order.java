@@ -81,6 +81,12 @@ public class Order {
     @Column(length = 255)
     private String deliveryMemo;
 
+    @Column
+    private LocalDateTime requestedDeliveryTime; // 희망 배달 시간
+
+    @Column(length = 100)
+    private String occasionType; // 기념일 종류 (생일, 기념일, 프로포즈 등)
+
     @Column(length = 100)
     private String recipientName;
 

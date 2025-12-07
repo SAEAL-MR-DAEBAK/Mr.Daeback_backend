@@ -1,5 +1,6 @@
 package com.saeal.MrDaebackService.voiceOrder.service;
 
+import com.saeal.MrDaebackService.dinner.dto.response.DinnerMenuItemResponseDto;
 import com.saeal.MrDaebackService.dinner.dto.response.DinnerResponseDto;
 import com.saeal.MrDaebackService.servingStyle.dto.response.ServingStyleResponseDto;
 import com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto.OrderItemRequestDto;
@@ -8,7 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 임시 장바구니 관리
@@ -25,6 +28,16 @@ public class CartManager {
         if (currentOrder == null) return result;
 
         for (OrderItemRequestDto item : currentOrder) {
+            // components가 null이면 빈 Map 사용
+            Map<String, Integer> components = item.getComponents() != null
+                    ? new LinkedHashMap<>(item.getComponents())
+                    : new LinkedHashMap<>();
+
+            // excludedItems가 null이면 빈 List 사용
+            List<String> excludedItems = item.getExcludedItems() != null
+                    ? new ArrayList<>(item.getExcludedItems())
+                    : new ArrayList<>();
+
             result.add(OrderItemDto.builder()
                     .dinnerId(item.getDinnerId())
                     .dinnerName(item.getDinnerName())
@@ -34,6 +47,9 @@ public class CartManager {
                     .basePrice(item.getBasePrice())
                     .unitPrice(item.getUnitPrice())
                     .totalPrice(item.getTotalPrice())
+                    .components(components)
+                    .excludedItems(excludedItems)
+                    .itemIndex(item.getItemIndex())
                     .build());
         }
         return result;
@@ -51,6 +67,7 @@ public class CartManager {
                 .basePrice(basePrice)
                 .unitPrice(basePrice)
                 .totalPrice(basePrice * quantity)
+                .components(extractComponents(dinner))
                 .build();
     }
 
@@ -66,7 +83,21 @@ public class CartManager {
                 .basePrice(basePrice)
                 .unitPrice(basePrice)
                 .totalPrice(0)
+                .components(extractComponents(dinner))
                 .build();
+    }
+
+    /**
+     * DinnerResponseDto에서 구성요소 추출
+     */
+    private Map<String, Integer> extractComponents(DinnerResponseDto dinner) {
+        Map<String, Integer> components = new LinkedHashMap<>();
+        if (dinner.getMenuItems() != null) {
+            for (DinnerMenuItemResponseDto item : dinner.getMenuItems()) {
+                components.put(item.getMenuItemName(), item.getDefaultQuantity());
+            }
+        }
+        return components;
     }
 
     /**
@@ -82,6 +113,9 @@ public class CartManager {
                 .basePrice(item.getBasePrice())
                 .unitPrice(item.getUnitPrice())
                 .totalPrice(item.getUnitPrice() * quantity)
+                .components(item.getComponents())
+                .excludedItems(item.getExcludedItems())
+                .itemIndex(item.getItemIndex())
                 .build();
     }
 
@@ -100,6 +134,9 @@ public class CartManager {
                 .basePrice(item.getBasePrice())
                 .unitPrice(newUnitPrice)
                 .totalPrice(newUnitPrice * item.getQuantity())
+                .components(item.getComponents())
+                .excludedItems(item.getExcludedItems())
+                .itemIndex(item.getItemIndex())
                 .build();
     }
 
@@ -119,6 +156,9 @@ public class CartManager {
                 .basePrice(item.getBasePrice())
                 .unitPrice(newUnitPrice)
                 .totalPrice(newUnitPrice * item.getQuantity())
+                .components(item.getComponents())
+                .excludedItems(item.getExcludedItems())
+                .itemIndex(item.getItemIndex())
                 .build();
     }
 

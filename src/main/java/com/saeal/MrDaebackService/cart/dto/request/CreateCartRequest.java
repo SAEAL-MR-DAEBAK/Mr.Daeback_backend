@@ -27,6 +27,10 @@ public class CreateCartRequest {
 
     private String memo;
 
+    private LocalDateTime requestedDeliveryTime; // 희망 배달 시간
+
+    private String occasionType; // 기념일 종류 (생일, 기념일, 프로포즈 등)
+
     private LocalDateTime expiresAt;
 
     @Getter

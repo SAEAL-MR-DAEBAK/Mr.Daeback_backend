@@ -61,6 +61,8 @@ public class OrderService {
                 .deliveryMethod(cart.getDeliveryMethod())
                 .deliveryAddress(cart.getDeliveryAddress())
                 .deliveryMemo(cart.getMemo())
+                .requestedDeliveryTime(cart.getRequestedDeliveryTime())
+                .occasionType(cart.getOccasionType())
                 .recipientName(cart.getUser().getDisplayName())
                 .recipientPhone(cart.getUser().getPhoneNumber())
                 .recipientEmail(cart.getUser().getEmail())

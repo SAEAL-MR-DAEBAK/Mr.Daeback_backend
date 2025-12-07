@@ -28,12 +28,26 @@ public class MenuMatcher {
     private List<DinnerResponseDto> cachedDinners;
     private List<ServingStyleResponseDto> cachedStyles;
 
-    // 한글-영어 디너 이름 매핑
+    // 한글-영어 디너 이름 매핑 (영문 → 한글)
     private static final Map<String, String> KOREAN_DINNER_NAMES = Map.of(
             "Valentine Dinner", "발렌타인 디너",
             "French Dinner", "프렌치 디너",
             "English Dinner", "잉글리시 디너",
-            "Champagne Feast dinner", "샴페인 축제 디너"
+            "Champagne Feast Dinner", "샴페인 축제 디너"
+    );
+
+    // 한글 → 영문 디너 이름 매핑 (역방향 검색용)
+    private static final Map<String, String> ENGLISH_DINNER_NAMES = Map.of(
+            "발렌타인 디너", "Valentine Dinner",
+            "발렌타인", "Valentine Dinner",
+            "프렌치 디너", "French Dinner",
+            "프렌치", "French Dinner",
+            "잉글리시 디너", "English Dinner",
+            "잉글리시", "English Dinner",
+            "샴페인 축제 디너", "Champagne Feast Dinner",
+            "샴페인 축제", "Champagne Feast Dinner",
+            "샴페인 피스트", "Champagne Feast Dinner",
+            "샴페인", "Champagne Feast Dinner"
     );
 
     // 한글-영어 스타일 이름 매핑
@@ -75,11 +89,11 @@ public class MenuMatcher {
     );
 
     /**
-     * 캐시 로드
+     * 캐시 로드 (menuItems 포함)
      */
     public void loadCache() {
         if (cachedDinners == null) {
-            cachedDinners = dinnerService.getAllDinners();
+            cachedDinners = dinnerService.getAllDinnersWithMenuItems();
         }
         if (cachedStyles == null) {
             cachedStyles = servingStyleService.getAllServingStyles();
@@ -87,32 +101,55 @@ public class MenuMatcher {
     }
 
     /**
-     * 메뉴 이름으로 Dinner 찾기 (부분 매칭 지원)
+     * 캐시 강제 새로고침
+     */
+    public void refreshCache() {
+        cachedDinners = null;
+        cachedStyles = null;
+        loadCache();
+    }
+
+    /**
+     * 메뉴 이름으로 Dinner 찾기 (한글/영문 모두 지원)
      */
     public Optional<DinnerResponseDto> findDinnerByName(String menuName) {
         loadCache();
         if (menuName == null) return Optional.empty();
 
-        String normalizedInput = menuName.trim().toLowerCase()
-                .replace(" ", "")
-                .replace("피스트", "feast")
-                .replace("축제", "feast");
+        String trimmedName = menuName.trim();
 
-        // 1. 정확히 일치하는 경우
+        // 1. 한글 이름을 영문으로 변환 시도
+        String englishName = ENGLISH_DINNER_NAMES.get(trimmedName);
+        if (englishName != null) {
+            Optional<DinnerResponseDto> koreanMatch = cachedDinners.stream()
+                    .filter(d -> d.isActive() && d.getDinnerName().equalsIgnoreCase(englishName))
+                    .findFirst();
+            if (koreanMatch.isPresent()) {
+                return koreanMatch;
+            }
+        }
+
+        // 2. 정확히 일치하는 경우 (영문)
         Optional<DinnerResponseDto> exactMatch = cachedDinners.stream()
-                .filter(d -> d.isActive() && d.getDinnerName().equalsIgnoreCase(menuName.trim()))
+                .filter(d -> d.isActive() && d.getDinnerName().equalsIgnoreCase(trimmedName))
                 .findFirst();
-        
+
         if (exactMatch.isPresent()) {
             return exactMatch;
         }
 
-        // 2. 부분 매칭 (대소문자 무시, 공백 무시)
+        // 3. 부분 매칭 (대소문자 무시, 공백 무시)
+        String normalizedInput = trimmedName.toLowerCase()
+                .replace(" ", "")
+                .replace("피스트", "feast")
+                .replace("축제", "feast")
+                .replace("디너", "dinner");
+
         return cachedDinners.stream()
                 .filter(d -> {
                     if (!d.isActive()) return false;
                     String normalizedDinner = d.getDinnerName().toLowerCase().replace(" ", "");
-                    return normalizedDinner.contains(normalizedInput) || 
+                    return normalizedDinner.contains(normalizedInput) ||
                            normalizedInput.contains(normalizedDinner) ||
                            isMatchingMenu(d.getDinnerName(), menuName);
                 })
@@ -224,6 +261,51 @@ public class MenuMatcher {
             return "그랜드, 디럭스";
         }
         return "심플, 그랜드, 디럭스";
+    }
+
+    /**
+     * ★ 디너의 메뉴 아이템 가격 조회 (한글/영문 매칭)
+     * @param dinnerId 디너 ID
+     * @param menuItemName 메뉴 아이템 이름 (한글 또는 영문)
+     * @return 메뉴 아이템 단가 (없으면 0)
+     */
+    public int getMenuItemPrice(String dinnerId, String menuItemName) {
+        loadCache();
+        if (dinnerId == null || menuItemName == null) return 0;
+
+        return cachedDinners.stream()
+                .filter(d -> d.getId().equals(dinnerId))
+                .findFirst()
+                .map(dinner -> {
+                    if (dinner.getMenuItems() == null) return 0;
+                    return dinner.getMenuItems().stream()
+                            .filter(mi -> isMatchingMenuItem(mi.getMenuItemName(), menuItemName))
+                            .findFirst()
+                            .map(mi -> mi.getUnitPrice() != null ? mi.getUnitPrice().intValue() : 0)
+                            .orElse(0);
+                })
+                .orElse(0);
+    }
+
+    /**
+     * ★ 디너의 메뉴 아이템 기본 수량 조회
+     */
+    public int getMenuItemDefaultQuantity(String dinnerId, String menuItemName) {
+        loadCache();
+        if (dinnerId == null || menuItemName == null) return 0;
+
+        return cachedDinners.stream()
+                .filter(d -> d.getId().equals(dinnerId))
+                .findFirst()
+                .map(dinner -> {
+                    if (dinner.getMenuItems() == null) return 0;
+                    return dinner.getMenuItems().stream()
+                            .filter(mi -> isMatchingMenuItem(mi.getMenuItemName(), menuItemName))
+                            .findFirst()
+                            .map(mi -> mi.getDefaultQuantity() != null ? mi.getDefaultQuantity() : 0)
+                            .orElse(0);
+                })
+                .orElse(0);
     }
 
     /**
