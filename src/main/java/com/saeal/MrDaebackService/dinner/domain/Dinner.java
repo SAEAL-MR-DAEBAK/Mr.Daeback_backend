@@ -35,7 +35,7 @@ public class Dinner {
     @Column(nullable = false)
     private boolean isActive = true;
 
-    @OneToMany(mappedBy = "dinner", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "dinner", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     private List<DinnerMenuItem> dinnerMenuItems = new ArrayList<>();
 }

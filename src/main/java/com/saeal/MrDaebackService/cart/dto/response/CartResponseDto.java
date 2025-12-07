@@ -25,6 +25,8 @@ public class CartResponseDto {
     private String deliveryAddress;
     private DeliveryMethod deliveryMethod;
     private String memo;
+    private LocalDateTime requestedDeliveryTime; // 희망 배달 시간
+    private String occasionType; // 기념일 종류
     private LocalDateTime expiresAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -56,6 +58,8 @@ public class CartResponseDto {
                 cart.getDeliveryAddress(),
                 cart.getDeliveryMethod(),
                 cart.getMemo(),
+                cart.getRequestedDeliveryTime(),
+                cart.getOccasionType(),
                 cart.getExpiresAt(),
                 cart.getCreatedAt(),
                 cart.getUpdatedAt()

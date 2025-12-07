@@ -2,7 +2,9 @@ package com.saeal.MrDaebackService.voiceOrder.controller;
 
 import com.saeal.MrDaebackService.security.JwtUserDetails;
 import com.saeal.MrDaebackService.voiceOrder.dto.request.ChatRequestDto;
+import com.saeal.MrDaebackService.voiceOrder.dto.request.VoiceCheckoutRequest;
 import com.saeal.MrDaebackService.voiceOrder.dto.response.ChatResponseDto;
+import com.saeal.MrDaebackService.voiceOrder.dto.response.VoiceCheckoutResponse;
 import com.saeal.MrDaebackService.voiceOrder.service.VoiceOrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,5 +39,24 @@ public class VoiceOrderController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/checkout")
+    @Operation(summary = "음성 주문 결제", description = "음성 주문을 확정하고 결제를 완료합니다 (Product → Cart → Order 생성)")
+    public ResponseEntity<VoiceCheckoutResponse> checkout(
+            @RequestBody VoiceCheckoutRequest request,
+            @AuthenticationPrincipal JwtUserDetails userDetails
+    ) {
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        try {
+            VoiceCheckoutResponse response = voiceOrderService.checkout(request, userDetails.getId());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Voice checkout failed", e);
+            return ResponseEntity.ok(VoiceCheckoutResponse.failure(e.getMessage()));
+        }
     }
 }

@@ -38,6 +38,8 @@ public class OrderResponseDto {
     private String recipientEmail;
     private String paymentTransactionId;
     private String memo;
+    private LocalDateTime requestedDeliveryTime; // 희망 배달 시간
+    private String occasionType; // 기념일 종류
     private String rejectionReason; // 관리자 거절 사유
     private LocalDateTime orderedAt;
     private LocalDateTime updatedAt;
@@ -73,6 +75,8 @@ public class OrderResponseDto {
                 order.getRecipientEmail(),
                 order.getPaymentTransactionId(),
                 order.getMemo(),
+                order.getRequestedDeliveryTime(),
+                order.getOccasionType(),
                 order.getRejectionReason(),
                 order.getOrderedAt(),
                 order.getUpdatedAt(),
