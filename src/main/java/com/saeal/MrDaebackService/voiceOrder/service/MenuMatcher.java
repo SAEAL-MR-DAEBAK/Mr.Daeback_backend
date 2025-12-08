@@ -50,11 +50,24 @@ public class MenuMatcher {
             "샴페인", "Champagne Feast Dinner"
     );
 
-    // 한글-영어 스타일 이름 매핑
+    // 한글-영어 스타일 이름 매핑 (영문 → 한글)
     private static final Map<String, String> KOREAN_STYLE_NAMES = Map.of(
             "Simple Style", "심플",
             "Grand Style", "그랜드",
             "Deluxe Style", "디럭스"
+    );
+
+    // 한글 → 영문 스타일 이름 매핑 (역방향 검색용)
+    private static final Map<String, String> ENGLISH_STYLE_NAMES = Map.of(
+            "심플", "Simple Style",
+            "심플 스타일", "Simple Style",
+            "simple", "Simple Style",
+            "그랜드", "Grand Style",
+            "그랜드 스타일", "Grand Style",
+            "grand", "Grand Style",
+            "디럭스", "Deluxe Style",
+            "디럭스 스타일", "Deluxe Style",
+            "deluxe", "Deluxe Style"
     );
 
     // ★ 메뉴 아이템 한글-영어 매핑 (양방향 검색용)
@@ -157,14 +170,46 @@ public class MenuMatcher {
     }
 
     /**
-     * 스타일 이름으로 ServingStyle 찾기
+     * 스타일 이름으로 ServingStyle 찾기 (한글/영문 모두 지원)
      */
     public Optional<ServingStyleResponseDto> findStyleByName(String styleName) {
         loadCache();
         if (styleName == null) return Optional.empty();
 
+        String trimmedName = styleName.trim();
+
+        // 1. 한글 이름을 영문으로 변환 시도
+        String englishName = ENGLISH_STYLE_NAMES.get(trimmedName);
+        if (englishName != null) {
+            Optional<ServingStyleResponseDto> koreanMatch = cachedStyles.stream()
+                    .filter(s -> s.isActive() && s.getStyleName().equalsIgnoreCase(englishName))
+                    .findFirst();
+            if (koreanMatch.isPresent()) {
+                return koreanMatch;
+            }
+        }
+
+        // 2. 정확히 일치하는 경우 (영문)
+        Optional<ServingStyleResponseDto> exactMatch = cachedStyles.stream()
+                .filter(s -> s.isActive() && s.getStyleName().equalsIgnoreCase(trimmedName))
+                .findFirst();
+
+        if (exactMatch.isPresent()) {
+            return exactMatch;
+        }
+
+        // 3. 부분 매칭 (대소문자 무시)
+        String normalizedInput = trimmedName.toLowerCase()
+                .replace(" ", "")
+                .replace("스타일", "style");
+
         return cachedStyles.stream()
-                .filter(s -> s.isActive() && s.getStyleName().equalsIgnoreCase(styleName.trim()))
+                .filter(s -> {
+                    if (!s.isActive()) return false;
+                    String normalizedStyle = s.getStyleName().toLowerCase().replace(" ", "");
+                    return normalizedStyle.contains(normalizedInput) ||
+                           normalizedInput.contains(normalizedStyle);
+                })
                 .findFirst();
     }
 

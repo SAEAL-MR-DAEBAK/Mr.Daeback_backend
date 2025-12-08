@@ -23,7 +23,6 @@ import com.saeal.MrDaebackService.voiceOrder.dto.request.VoiceCheckoutRequest;
 import com.saeal.MrDaebackService.voiceOrder.dto.response.ChatResponseDto;
 import com.saeal.MrDaebackService.voiceOrder.dto.response.OrderItemDto;
 import com.saeal.MrDaebackService.voiceOrder.dto.response.VoiceCheckoutResponse;
-import com.saeal.MrDaebackService.voiceOrder.enums.OrderFlowState;
 import com.saeal.MrDaebackService.voiceOrder.enums.UiAction;
 import com.saeal.MrDaebackService.voiceOrder.enums.UserIntent;
 import com.saeal.MrDaebackService.voiceOrder.service.intent.IntentContext;
@@ -70,9 +69,12 @@ public class VoiceOrderService {
     private final ProductService productService;
     private final CartService cartService;
     private final MenuItemsRepository menuItemsRepository;
+    private final MenuMatcher menuMatcher;
 
     /**
-     * 채팅 메시지 처리
+     * 채팅 메시지 처리 (간소화 버전)
+     * - 주소는 첫 번째 주소로 자동 선택
+     * - 기념일/배달시간은 첫 메시지에서 자동 추출
      */
     public ChatResponseDto processChat(ChatRequestDto request, UUID userId) {
         // 1. 입력 데이터 추출
@@ -81,13 +83,18 @@ public class VoiceOrderService {
         List<OrderItemRequestDto> currentOrder = Optional.ofNullable(request.getCurrentOrder())
                 .orElse(new ArrayList<>());
         List<String> userAddresses = getUserAddresses(userId);
-        String selectedAddress = request.getSelectedAddress();
-        String currentFlowState = request.getCurrentFlowState();
         String occasionType = request.getOccasionType();
         java.time.LocalDateTime requestedDeliveryTime = request.getRequestedDeliveryTime();
 
+        // ★ 주소 자동 선택: 첫 번째 주소를 기본으로 사용
+        String selectedAddress = request.getSelectedAddress();
+        if ((selectedAddress == null || selectedAddress.isEmpty()) && !userAddresses.isEmpty()) {
+            selectedAddress = userAddresses.get(0);
+            log.info("주소 자동 선택: {}", selectedAddress);
+        }
+
         // 2. LLM 호출
-        String systemPrompt = promptBuilder.build(currentOrder, selectedAddress, userAddresses, currentFlowState);
+        String systemPrompt = promptBuilder.build(currentOrder, selectedAddress, userAddresses, null);
         List<Map<String, String>> recentHistory = getRecentHistory(history, 4);
         String llmRawResponse = groqService.chat(systemPrompt, recentHistory, userMessage);
 
@@ -102,7 +109,8 @@ public class VoiceOrderService {
     }
 
     /**
-     * Intent 처리 - 핸들러 레지스트리에 위임
+     * Intent 처리 - 핸들러 레지스트리에 위임 (간소화 버전)
+     * - 주소 체크 제거 (자동 선택됨)
      */
     private ChatResponseDto processIntent(String userMessage, LlmResponseDto llmResponse,
             List<OrderItemRequestDto> currentOrder,
@@ -114,11 +122,7 @@ public class VoiceOrderService {
         UserIntent intent = parseIntent(llmResponse.getIntent());
         List<OrderItemDto> orderItems = cartManager.convertToOrderItemDtoList(currentOrder);
 
-        // 주소 체크 (SELECT_ADDRESS 제외)
-        if (needsAddressCheck(intent, selectedAddress, userAddresses)) {
-            return buildAddressRequiredResponse(userMessage, orderItems, selectedAddress, userAddresses,
-                    occasionType, requestedDeliveryTime);
-        }
+        // ★ 주소 체크 제거 - 이미 자동 선택됨
 
         // 진행 중인 아이템 찾기
         OrderItemDto pendingItem = findPendingItem(orderItems);
@@ -181,49 +185,6 @@ public class VoiceOrderService {
                 .build();
     }
 
-    /**
-     * 주소 필요 여부 체크
-     */
-    private boolean needsAddressCheck(UserIntent intent, String selectedAddress, List<String> userAddresses) {
-        if (intent == UserIntent.SELECT_ADDRESS) {
-            return false; // 주소 선택 중이므로 체크 불필요
-        }
-        return (selectedAddress == null || selectedAddress.isEmpty()) && !userAddresses.isEmpty();
-    }
-
-    /**
-     * 주소 선택 필요 응답 생성
-     */
-    private ChatResponseDto buildAddressRequiredResponse(String userMessage, List<OrderItemDto> orderItems,
-            String selectedAddress, List<String> userAddresses,
-            String occasionType, java.time.LocalDateTime requestedDeliveryTime) {
-        String message;
-        OrderFlowState nextState;
-
-        if (!userAddresses.isEmpty()) {
-            message = "안녕하세요! Mr.Daeback입니다. 🍽️\n먼저 배달받으실 주소를 선택해주세요!\n\n"
-                    + responseMessageBuilder.formatAddressList(userAddresses);
-            nextState = OrderFlowState.SELECTING_ADDRESS;
-        } else {
-            message = "저장된 배달 주소가 없어요. 마이페이지에서 주소를 먼저 추가해주세요!";
-            nextState = OrderFlowState.IDLE;
-        }
-
-        String finalMessage = responseMessageBuilder.appendStatusSummary(message, nextState, orderItems);
-        int totalPrice = cartManager.calculateTotalPrice(orderItems);
-
-        return ChatResponseDto.builder()
-                .userMessage(userMessage)
-                .assistantMessage(finalMessage)
-                .flowState(nextState)
-                .uiAction(UiAction.NONE)
-                .currentOrder(orderItems)
-                .totalPrice(totalPrice)
-                .selectedAddress(selectedAddress)
-                .occasionType(occasionType)
-                .requestedDeliveryTime(requestedDeliveryTime)
-                .build();
-    }
 
     // ============================================================
     // 헬퍼 메서드
@@ -269,21 +230,81 @@ public class VoiceOrderService {
     private LlmResponseDto parseLlmResponse(String rawResponse) {
         try {
             String jsonContent = rawResponse.trim();
-            if (jsonContent.startsWith("```json"))
-                jsonContent = jsonContent.substring(7);
-            if (jsonContent.startsWith("```"))
-                jsonContent = jsonContent.substring(3);
-            if (jsonContent.endsWith("```"))
-                jsonContent = jsonContent.substring(0, jsonContent.length() - 3);
-            jsonContent = jsonContent.trim();
+            log.debug("LLM Raw Response: {}", jsonContent);
 
+            // ```json ... ``` 블록 제거
+            if (jsonContent.contains("```json")) {
+                int start = jsonContent.indexOf("```json") + 7;
+                int end = jsonContent.indexOf("```", start);
+                if (end > start) {
+                    jsonContent = jsonContent.substring(start, end).trim();
+                }
+            } else if (jsonContent.contains("```")) {
+                int start = jsonContent.indexOf("```") + 3;
+                int end = jsonContent.indexOf("```", start);
+                if (end > start) {
+                    jsonContent = jsonContent.substring(start, end).trim();
+                }
+            }
+
+            // ★ JSON 객체만 추출 (다른 텍스트 완전 제거)
+            int jsonStart = jsonContent.indexOf("{");
+            int jsonEnd = findMatchingBrace(jsonContent, jsonStart);
+            if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                jsonContent = jsonContent.substring(jsonStart, jsonEnd + 1);
+            }
+
+            log.debug("Extracted JSON: {}", jsonContent);
             return objectMapper.readValue(jsonContent, LlmResponseDto.class);
         } catch (JsonProcessingException e) {
+            log.warn("LLM 응답 JSON 파싱 실패: {} - Raw: {}", e.getMessage(), rawResponse);
             LlmResponseDto fallback = new LlmResponseDto();
             fallback.setIntent("ASK_MENU_INFO");
-            fallback.setMessage(rawResponse.trim());
+            fallback.setMessage("죄송해요, 다시 말씀해주세요!");
             return fallback;
         }
+    }
+
+    /**
+     * 매칭되는 닫는 중괄호 찾기 (중첩된 JSON 처리)
+     */
+    private int findMatchingBrace(String content, int openIndex) {
+        if (openIndex < 0 || openIndex >= content.length()) return -1;
+
+        int depth = 0;
+        boolean inString = false;
+        boolean escape = false;
+
+        for (int i = openIndex; i < content.length(); i++) {
+            char c = content.charAt(i);
+
+            if (escape) {
+                escape = false;
+                continue;
+            }
+
+            if (c == '\\') {
+                escape = true;
+                continue;
+            }
+
+            if (c == '"') {
+                inString = !inString;
+                continue;
+            }
+
+            if (!inString) {
+                if (c == '{') {
+                    depth++;
+                } else if (c == '}') {
+                    depth--;
+                    if (depth == 0) {
+                        return i;
+                    }
+                }
+            }
+        }
+        return content.lastIndexOf("}");
     }
 
     private UserIntent parseIntent(String intentStr) {
@@ -370,14 +391,28 @@ public class VoiceOrderService {
         List<ProductWithPrice> result = new ArrayList<>();
 
         for (VoiceCheckoutRequest.OrderItemRequest item : request.getOrderItems()) {
-            if (item.getDinnerId() == null || item.getServingStyleId() == null || item.getQuantity() <= 0) {
+            if (item.getDinnerId() == null || item.getQuantity() <= 0) {
+                log.warn("[Checkout] Skipping item - dinnerId: {}, quantity: {}", item.getDinnerId(), item.getQuantity());
                 continue;
+            }
+
+            // ★ servingStyleId가 없으면 기본 스타일(Grand Style) 사용
+            String servingStyleId = item.getServingStyleId();
+            if (servingStyleId == null || servingStyleId.isEmpty()) {
+                var defaultStyle = menuMatcher.findStyleByName("Grand Style");
+                if (defaultStyle.isPresent()) {
+                    servingStyleId = defaultStyle.get().getId().toString();
+                    log.info("[Checkout] Using default style: Grand Style for {}", item.getDinnerName());
+                } else {
+                    log.warn("[Checkout] No default style found, skipping item: {}", item.getDinnerName());
+                    continue;
+                }
             }
 
             // 1. Product 생성
             CreateProductRequest productRequest = CreateProductRequest.builder()
                     .dinnerId(item.getDinnerId())
-                    .servingStyleId(item.getServingStyleId())
+                    .servingStyleId(servingStyleId)
                     .quantity(1) // 각 Product는 1개 단위
                     .memo(request.getMemo())
                     .address(request.getDeliveryAddress())
@@ -390,8 +425,13 @@ public class VoiceOrderService {
             BigDecimal menuItemDiff = BigDecimal.ZERO;
             boolean hasComponents = item.getComponents() != null && !item.getComponents().isEmpty();
             boolean hasExcludedItems = item.getExcludedItems() != null && !item.getExcludedItems().isEmpty();
+
+            log.info("[Checkout] Item: {}, components: {}, excludedItems: {}",
+                    item.getDinnerName(), item.getComponents(), item.getExcludedItems());
+
             if (hasComponents || hasExcludedItems) {
                 menuItemDiff = applyCustomization(productId, product, item.getComponents(), item.getExcludedItems());
+                log.info("[Checkout] Applied customization, menuItemDiff: {}", menuItemDiff);
             }
 
             // 3. unitPrice 계산: basePrice + styleExtraPrice + menuItemDiff
@@ -423,8 +463,8 @@ public class VoiceOrderService {
     }
 
     /**
-     * 커스터마이징 적용 (ProductMenuItem 수량 업데이트)
-     * 
+     * 커스터마이징 적용 (ProductMenuItem 수량 업데이트 + 새로운 구성요소 추가)
+     *
      * @return 메뉴 아이템 차액 (양수: 추가, 음수: 감소)
      */
     private BigDecimal applyCustomization(UUID productId, ProductResponseDto product,
@@ -434,44 +474,104 @@ public class VoiceOrderService {
 
         // ProductMenuItem 목록 가져오기
         List<ProductMenuItemResponseDto> productMenuItems = product.getProductMenuItems();
-        if (productMenuItems == null || productMenuItems.isEmpty()) {
-            return totalDiff;
+
+        // 처리된 component 키 추적 (새로운 구성요소 추가 시 사용)
+        Set<String> processedComponentKeys = new HashSet<>();
+
+        // 1. 기존 ProductMenuItem 처리 (수량 변경, 제외)
+        if (productMenuItems != null && !productMenuItems.isEmpty()) {
+            for (ProductMenuItemResponseDto pmi : productMenuItems) {
+                String menuItemName = pmi.getMenuItemName();
+                UUID menuItemId = UUID.fromString(pmi.getMenuItemId());
+                int defaultQty = pmi.getQuantity();
+                BigDecimal unitPrice = pmi.getUnitPrice();
+
+                // 제외된 아이템 처리
+                if (excludedItems != null && isMenuItemExcluded(menuItemName, excludedItems)) {
+                    // 수량을 0으로 설정
+                    UpdateProductMenuItemRequest updateRequest = new UpdateProductMenuItemRequest();
+                    updateRequest.setQuantity(0);
+                    productService.updateProductMenuItem(productId, menuItemId, updateRequest);
+
+                    // 차액 계산 (기본 수량 × 단가 만큼 감소)
+                    totalDiff = totalDiff.subtract(unitPrice.multiply(BigDecimal.valueOf(defaultQty)));
+                    continue;
+                }
+
+                // components에서 현재 수량 찾기
+                String matchedKey = findComponentKey(menuItemName, components);
+                if (matchedKey != null) {
+                    processedComponentKeys.add(matchedKey);
+                    int currentQty = components.get(matchedKey);
+
+                    if (currentQty != defaultQty) {
+                        // 수량 업데이트
+                        UpdateProductMenuItemRequest updateRequest = new UpdateProductMenuItemRequest();
+                        updateRequest.setQuantity(currentQty);
+                        productService.updateProductMenuItem(productId, menuItemId, updateRequest);
+
+                        // 차액 계산: (현재수량 - 기본수량) × 단가
+                        int qtyDiff = currentQty - defaultQty;
+                        BigDecimal priceDiff = unitPrice.multiply(BigDecimal.valueOf(qtyDiff));
+                        totalDiff = totalDiff.add(priceDiff);
+                    }
+                }
+            }
         }
 
-        for (ProductMenuItemResponseDto pmi : productMenuItems) {
-            String menuItemName = pmi.getMenuItemName();
-            UUID menuItemId = UUID.fromString(pmi.getMenuItemId());
-            int defaultQty = pmi.getQuantity();
-            BigDecimal unitPrice = pmi.getUnitPrice();
+        // 2. 새로운 구성요소 추가 (Product에 없는 MenuItem)
+        if (components != null && !components.isEmpty()) {
+            for (Map.Entry<String, Integer> entry : components.entrySet()) {
+                String componentKey = entry.getKey();
+                int quantity = entry.getValue();
 
-            // 제외된 아이템 처리
-            if (excludedItems != null && isMenuItemExcluded(menuItemName, excludedItems)) {
-                // 수량을 0으로 설정
-                UpdateProductMenuItemRequest updateRequest = new UpdateProductMenuItemRequest();
-                updateRequest.setQuantity(0);
-                productService.updateProductMenuItem(productId, menuItemId, updateRequest);
+                // 이미 처리된 경우 건너뛰기
+                if (processedComponentKeys.contains(componentKey)) {
+                    continue;
+                }
 
-                // 차액 계산 (기본 수량 × 단가 만큼 감소)
-                totalDiff = totalDiff.subtract(unitPrice.multiply(BigDecimal.valueOf(defaultQty)));
-                continue;
-            }
+                // MenuItem 찾기
+                MenuItems menuItem = findMenuItemByName(componentKey);
+                if (menuItem == null) {
+                    log.warn("MenuItem not found for component: {}", componentKey);
+                    continue;
+                }
 
-            // components에서 현재 수량 찾기
-            Integer currentQty = findComponentQuantity(menuItemName, components);
-            if (currentQty != null && currentQty != defaultQty) {
-                // 수량 업데이트
-                UpdateProductMenuItemRequest updateRequest = new UpdateProductMenuItemRequest();
-                updateRequest.setQuantity(currentQty);
-                productService.updateProductMenuItem(productId, menuItemId, updateRequest);
+                // Product에 새로운 MenuItem 추가
+                try {
+                    productService.addProductMenuItem(productId, menuItem.getId(), quantity);
 
-                // 차액 계산: (현재수량 - 기본수량) × 단가
-                int qtyDiff = currentQty - defaultQty;
-                BigDecimal priceDiff = unitPrice.multiply(BigDecimal.valueOf(qtyDiff));
-                totalDiff = totalDiff.add(priceDiff);
+                    // 차액 계산: 새로운 구성요소 전체 가격 추가
+                    BigDecimal unitPrice = menuItem.getUnitPrice();
+                    BigDecimal priceDiff = unitPrice.multiply(BigDecimal.valueOf(quantity));
+                    totalDiff = totalDiff.add(priceDiff);
+
+                    log.info("Added new component to product: {} x{}, priceDiff: {}",
+                            componentKey, quantity, priceDiff);
+                } catch (Exception e) {
+                    log.error("Failed to add component {} to product: {}", componentKey, e.getMessage());
+                }
             }
         }
 
         return totalDiff;
+    }
+
+    /**
+     * components에서 해당 메뉴 아이템의 키 찾기 (부분 매칭)
+     */
+    private String findComponentKey(String menuItemName, Map<String, Integer> components) {
+        if (menuItemName == null || components == null)
+            return null;
+        String lowerName = menuItemName.toLowerCase();
+
+        for (String key : components.keySet()) {
+            String lowerKey = key.toLowerCase();
+            if (lowerName.contains(lowerKey) || lowerKey.contains(lowerName)) {
+                return key;
+            }
+        }
+        return null;
     }
 
     /**
@@ -483,23 +583,6 @@ public class VoiceOrderService {
         String lowerName = menuItemName.toLowerCase();
         return excludedItems.stream()
                 .anyMatch(ex -> lowerName.contains(ex.toLowerCase()) || ex.toLowerCase().contains(lowerName));
-    }
-
-    /**
-     * components에서 해당 메뉴 아이템의 수량 찾기 (부분 매칭)
-     */
-    private Integer findComponentQuantity(String menuItemName, Map<String, Integer> components) {
-        if (menuItemName == null || components == null)
-            return null;
-        String lowerName = menuItemName.toLowerCase();
-
-        for (Map.Entry<String, Integer> entry : components.entrySet()) {
-            String key = entry.getKey().toLowerCase();
-            if (lowerName.contains(key) || key.contains(lowerName)) {
-                return entry.getValue();
-            }
-        }
-        return null;
     }
 
     /**
@@ -576,15 +659,15 @@ public class VoiceOrderService {
             return null;
 
         // 1. 정확한 이름 매칭 (대소문자 무시)
-        Optional<MenuItems> exact = menuItemsRepository.findByNameIgnoreCase(name);
-        if (exact.isPresent()) {
-            return exact.get();
+        List<MenuItems> exactList = menuItemsRepository.findByNameIgnoreCase(name);
+        if (!exactList.isEmpty()) {
+            return exactList.get(0);
         }
 
-        // 2. 부분 매칭 (대소문자 무시)
-        Optional<MenuItems> partial = menuItemsRepository.findFirstByNameContainingIgnoreCase(name);
-        if (partial.isPresent()) {
-            return partial.get();
+        // 2. 부분 매칭 (대소문자 무시) - 목록에서 첫 번째 선택
+        List<MenuItems> partialList = menuItemsRepository.findByNameContainingIgnoreCase(name);
+        if (!partialList.isEmpty()) {
+            return partialList.get(0);
         }
 
         // 3. 한글/영어 변환 매칭
@@ -605,14 +688,14 @@ public class VoiceOrderService {
             String eng = korToEng[i + 1].toLowerCase();
 
             if (lowerName.contains(kor)) {
-                Optional<MenuItems> byEng = menuItemsRepository.findFirstByNameContainingIgnoreCase(eng);
-                if (byEng.isPresent())
-                    return byEng.get();
+                List<MenuItems> byEng = menuItemsRepository.findByNameContainingIgnoreCase(eng);
+                if (!byEng.isEmpty())
+                    return byEng.get(0);
             }
             if (lowerName.contains(eng)) {
-                Optional<MenuItems> byKor = menuItemsRepository.findFirstByNameContainingIgnoreCase(kor);
-                if (byKor.isPresent())
-                    return byKor.get();
+                List<MenuItems> byKor = menuItemsRepository.findByNameContainingIgnoreCase(kor);
+                if (!byKor.isEmpty())
+                    return byKor.get(0);
             }
         }
 

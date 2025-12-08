@@ -14,7 +14,9 @@ import java.util.List;
 
 /**
  * SELECT_ADDRESS Intent 처리
+ * @deprecated 주소는 자동으로 첫 번째 주소가 선택됨 (간소화된 플로우)
  */
+@Deprecated
 @Component
 public class SelectAddressHandler extends AbstractIntentHandler {
 

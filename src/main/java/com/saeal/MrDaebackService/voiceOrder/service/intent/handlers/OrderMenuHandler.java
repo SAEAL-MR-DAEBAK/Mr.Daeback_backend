@@ -10,6 +10,7 @@ import com.saeal.MrDaebackService.voiceOrder.service.MenuMatcher;
 import com.saeal.MrDaebackService.voiceOrder.service.intent.AbstractIntentHandler;
 import com.saeal.MrDaebackService.voiceOrder.service.intent.IntentContext;
 import com.saeal.MrDaebackService.voiceOrder.service.intent.IntentResult;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.List;
  * ORDER_MENU Intent 처리
  */
 @Component
+@Slf4j
 public class OrderMenuHandler extends AbstractIntentHandler {
 
     public OrderMenuHandler(MenuMatcher menuMatcher, CartManager cartManager) {
@@ -37,23 +39,29 @@ public class OrderMenuHandler extends AbstractIntentHandler {
         int pendingIdx = context.getPendingItemIndex();
         String userMessage = context.getUserMessage();
 
+        // 디버깅 로그
+        log.info("[OrderMenuHandler] userMessage: {}, entities.styleName: {}, entities.menuName: {}, pendingItem: {}",
+                userMessage,
+                entities != null ? entities.getStyleName() : null,
+                entities != null ? entities.getMenuName() : null,
+                pendingItem != null ? pendingItem.getDinnerName() : null);
+
         // 주소 체크
         if (context.getSelectedAddress() == null || context.getSelectedAddress().isEmpty()) {
             if (!context.getUserAddresses().isEmpty()) {
                 return IntentResult.of(
                         "먼저 배달 주소를 선택해주세요!\n" + formatAddressList(context.getUserAddresses()),
-                        OrderFlowState.SELECTING_ADDRESS
-                );
+                        OrderFlowState.SELECTING_ADDRESS);
             } else {
                 return IntentResult.of(
                         "저장된 배달 주소가 없어요. 마이페이지에서 주소를 먼저 추가해주세요!",
-                        OrderFlowState.IDLE
-                );
+                        OrderFlowState.IDLE);
             }
         }
 
         // 진행 중인 아이템이 있고, 수량만 말한 경우
-        if (pendingItem != null && entities != null && entities.getQuantity() != null && entities.getMenuName() == null) {
+        if (pendingItem != null && entities != null && entities.getQuantity() != null
+                && entities.getMenuName() == null) {
             if (pendingItem.getServingStyleId() != null) {
                 OrderItemDto updated = cartManager.setQuantity(pendingItem, entities.getQuantity());
                 orderItems.set(pendingIdx, updated);
@@ -69,7 +77,8 @@ public class OrderMenuHandler extends AbstractIntentHandler {
         }
 
         // 진행 중인 아이템이 있고, 스타일만 말한 경우
-        if (pendingItem != null && entities != null && entities.getStyleName() != null && entities.getMenuName() == null) {
+        if (pendingItem != null && entities != null && entities.getStyleName() != null
+                && entities.getMenuName() == null) {
             return handleStyleSelection(context, pendingItem, pendingIdx, entities.getStyleName());
         }
 
@@ -82,44 +91,43 @@ public class OrderMenuHandler extends AbstractIntentHandler {
     }
 
     private IntentResult handleStyleSelection(IntentContext context, OrderItemDto pendingItem, int pendingIdx,
-                                              String styleName) {
+            String styleName) {
         List<OrderItemDto> orderItems = context.getOrderItems();
 
         // 스타일 제한 검사
         if (!menuMatcher.isStyleAvailableForDinner(pendingItem.getDinnerName(), styleName)) {
             return IntentResult.of(
                     pendingItem.getDinnerName() + "는 Simple Style을 제공하지 않아요. Grand Style 또는 Deluxe Style 중에서 선택해주세요!",
-                    OrderFlowState.SELECTING_STYLE
-            );
+                    OrderFlowState.SELECTING_STYLE);
         }
 
         var styleOpt = menuMatcher.findStyleByName(styleName);
         if (styleOpt.isPresent()) {
             OrderItemDto updated = cartManager.applyStyleToItem(pendingItem, styleOpt.get());
+
+            // ★ 자동으로 수량 1개 설정 (수량 묻지 않음)
+            if (updated.getQuantity() == 0) {
+                updated = cartManager.setQuantity(updated, 1);
+            }
             orderItems.set(pendingIdx, updated);
 
-            if (updated.getQuantity() == 0) {
-                return IntentResult.builder()
-                        .message(styleOpt.get().getStyleName() + "로 선택하셨어요! " + buildQuantityQuestion(updated.getDinnerName()))
-                        .nextState(OrderFlowState.SELECTING_QUANTITY)
-                        .uiAction(UiAction.UPDATE_ORDER_LIST)
-                        .updatedOrder(orderItems)
-                        .build();
-            } else {
-                return IntentResult.builder()
-                        .message(updated.getDinnerName() + " " + styleOpt.get().getStyleName() + " 적용 완료! 다른 디너 메뉴도 추가하시겠어요?")
-                        .nextState(OrderFlowState.ASKING_MORE_DINNER)
-                        .uiAction(UiAction.UPDATE_ORDER_LIST)
-                        .updatedOrder(orderItems)
-                        .build();
-            }
+            // ★ 바로 구성요소 변경/결제 안내로 진행
+            return IntentResult.builder()
+                    .message(updated.getDinnerName() + " " + styleOpt.get().getStyleName() + " 1개 추가했어요! ✨\n\n" +
+                            "구성요소 변경하시려면 말씀해주세요!\n" +
+                            "예) 스테이크 추가해줘, 샴페인 2병으로 변경해줘\n\n" +
+                            "변경 없이 바로 결제하시려면 '결제할게요'라고 말씀해주세요!")
+                    .nextState(OrderFlowState.ORDERING)
+                    .uiAction(UiAction.UPDATE_ORDER_LIST)
+                    .updatedOrder(orderItems)
+                    .build();
         }
 
         return IntentResult.of("죄송해요, '" + styleName + "' 스타일을 찾을 수 없어요.", OrderFlowState.SELECTING_STYLE);
     }
 
     private IntentResult handleNewMenuOrder(IntentContext context, LlmResponseDto.ExtractedEntities entities,
-                                            String userMessage) {
+            String userMessage) {
         List<OrderItemDto> orderItems = context.getOrderItems();
         OrderItemDto pendingItem = context.getPendingItem();
 
@@ -131,15 +139,18 @@ public class OrderMenuHandler extends AbstractIntentHandler {
         // 진행 중인 아이템이 있으면 먼저 완성하도록 안내 (새 메뉴 추가 요청이 아닌 경우)
         if (pendingItem != null && !isAddMorePattern) {
             if (pendingItem.getServingStyleId() == null) {
-                return IntentResult.of(pendingItem.getDinnerName() + "의 스타일을 먼저 선택해주세요!", OrderFlowState.SELECTING_STYLE);
+                return IntentResult.of(pendingItem.getDinnerName() + "의 스타일을 먼저 선택해주세요!",
+                        OrderFlowState.SELECTING_STYLE);
             } else {
-                return IntentResult.of(pendingItem.getDinnerName() + "의 수량을 먼저 선택해주세요!", OrderFlowState.SELECTING_QUANTITY);
+                return IntentResult.of(pendingItem.getDinnerName() + "의 수량을 먼저 선택해주세요!",
+                        OrderFlowState.SELECTING_QUANTITY);
             }
         }
 
         var dinnerOpt = menuMatcher.findDinnerByName(entities.getMenuName());
         if (dinnerOpt.isEmpty()) {
-            return IntentResult.of("죄송해요, '" + entities.getMenuName() + "' 메뉴를 찾을 수 없어요.", OrderFlowState.SELECTING_MENU);
+            return IntentResult.of("죄송해요, '" + entities.getMenuName() + "' 메뉴를 찾을 수 없어요.",
+                    OrderFlowState.SELECTING_MENU);
         }
 
         // 임시 아이템 생성
@@ -150,7 +161,8 @@ public class OrderMenuHandler extends AbstractIntentHandler {
             if (!menuMatcher.isStyleAvailableForDinner(newItem.getDinnerName(), entities.getStyleName())) {
                 orderItems.add(newItem);
                 return IntentResult.builder()
-                        .message(newItem.getDinnerName() + "는 Simple Style을 제공하지 않아요. Grand Style 또는 Deluxe Style 중에서 선택해주세요!")
+                        .message(newItem.getDinnerName()
+                                + "는 Simple Style을 제공하지 않아요. Grand Style 또는 Deluxe Style 중에서 선택해주세요!")
                         .nextState(OrderFlowState.SELECTING_STYLE)
                         .uiAction(UiAction.UPDATE_ORDER_LIST)
                         .updatedOrder(orderItems)
@@ -179,17 +191,20 @@ public class OrderMenuHandler extends AbstractIntentHandler {
                     .uiAction(UiAction.UPDATE_ORDER_LIST)
                     .updatedOrder(orderItems)
                     .build();
-        } else if (newItem.getQuantity() == 0) {
-            return IntentResult.builder()
-                    .message(newItem.getDinnerName() + " " + newItem.getServingStyleName() + "이요! " + buildQuantityQuestion(newItem.getDinnerName()))
-                    .nextState(OrderFlowState.SELECTING_QUANTITY)
-                    .uiAction(UiAction.UPDATE_ORDER_LIST)
-                    .updatedOrder(orderItems)
-                    .build();
         } else {
+            // ★ 스타일이 선택되면 자동으로 수량 1개 설정
+            if (newItem.getQuantity() == 0) {
+                newItem = cartManager.setQuantity(newItem, 1);
+                orderItems.set(orderItems.size() - 1, newItem);
+            }
+
+            // ★ 바로 구성요소 변경/결제 안내
             return IntentResult.builder()
-                    .message(newItem.getDinnerName() + " " + newItem.getServingStyleName() + " " + newItem.getQuantity() + "개 주문 완료! 다른 디너 메뉴도 추가하시겠어요?")
-                    .nextState(OrderFlowState.ASKING_MORE_DINNER)
+                    .message(newItem.getDinnerName() + " " + newItem.getServingStyleName() + " 1개 추가했어요! ✨\n\n" +
+                            "구성요소 변경하시려면 말씀해주세요!\n" +
+                            "예) 커피 1포트, 샴페인 2병으로 변경해줘\n\n" +
+                            "변경 없이 바로 결제하시려면 '결제할게요'라고 말씀해주세요!")
+                    .nextState(OrderFlowState.ORDERING)
                     .uiAction(UiAction.UPDATE_ORDER_LIST)
                     .updatedOrder(orderItems)
                     .build();

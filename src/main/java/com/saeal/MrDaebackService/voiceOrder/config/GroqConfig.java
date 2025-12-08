@@ -12,6 +12,6 @@ import org.springframework.context.annotation.Configuration;
 public class GroqConfig {
     private String apiKey;
     private String sttModel = "whisper-large-v3";
-    private String llmModel = "llama-3.1-70b-versatile";
+    private String llmModel = "llama-3.3-70b-versatile";
     private String baseUrl = "https://api.groq.com/openai/v1";
 }

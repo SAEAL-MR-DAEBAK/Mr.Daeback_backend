@@ -13,7 +13,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * SET_MEMO, NO_MEMO Intent 처리
+ * @deprecated 간소화된 플로우에서 메모 단계 제거
  */
+@Deprecated
 @Component
 public class MemoHandler extends AbstractIntentHandler {
 

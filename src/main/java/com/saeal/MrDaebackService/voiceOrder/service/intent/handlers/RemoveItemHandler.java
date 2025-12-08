@@ -16,7 +16,9 @@ import java.util.List;
 
 /**
  * REMOVE_ITEM Intent 처리
+ * @deprecated 간소화된 플로우에서 직접 삭제 기능 제거
  */
+@Deprecated
 @Component
 public class RemoveItemHandler extends AbstractIntentHandler {
 

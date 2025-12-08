@@ -59,3 +59,5 @@ test-output/
 .gradle/
 build/
 out/
+src/main/resources/application-local.yaml
+bin/

@@ -52,8 +52,7 @@ public class GroqService {
                     url,
                     HttpMethod.POST,
                     requestEntity,
-                    GroqSttResponseDto.class
-            );
+                    GroqSttResponseDto.class);
 
             if (response.getBody() != null) {
                 return response.getBody().getText();
@@ -95,8 +94,6 @@ public class GroqService {
         requestBody.put("messages", messages);
         requestBody.put("temperature", 0.7);
         requestBody.put("max_tokens", 1024);
-        // ★ JSON 모드 강제 - LLM이 항상 JSON으로 응답하도록
-        requestBody.put("response_format", Map.of("type", "json_object"));
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 
@@ -105,8 +102,7 @@ public class GroqService {
                     url,
                     HttpMethod.POST,
                     requestEntity,
-                    GroqChatResponseDto.class
-            );
+                    GroqChatResponseDto.class);
 
             if (response.getBody() != null) {
                 return response.getBody().getContent();

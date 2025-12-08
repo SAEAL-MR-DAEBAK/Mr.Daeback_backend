@@ -103,6 +103,9 @@ public class ResponseMessageBuilder {
     private String getStateKorean(OrderFlowState state) {
         return switch (state) {
             case IDLE -> "대기";
+            case ORDERING -> "주문 진행 중";
+            case CHECKOUT_READY -> "결제 준비 완료";
+            // 레거시 호환용
             case SELECTING_ADDRESS -> "주소 선택 중";
             case ASKING_OCCASION -> "기념일 확인 중";
             case ASKING_DELIVERY_TIME -> "배달 시간 확인 중";
@@ -114,7 +117,6 @@ public class ResponseMessageBuilder {
             case SELECTING_ADDITIONAL_MENU -> "추가 메뉴 선택 중";
             case ENTERING_MEMO -> "메모 입력 중";
             case CONFIRMING -> "주문 확인 중";
-            case CHECKOUT_READY -> "결제 준비 완료";
         };
     }
 

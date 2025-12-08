@@ -14,7 +14,9 @@ import java.util.List;
 
 /**
  * ADD_MORE_DINNER, NO_MORE_DINNER Intent 처리
+ * @deprecated 간소화된 플로우에서는 스타일 선택 후 바로 구성요소 변경/결제로 진행
  */
+@Deprecated
 @Component
 public class MoreDinnerHandler extends AbstractIntentHandler {
 

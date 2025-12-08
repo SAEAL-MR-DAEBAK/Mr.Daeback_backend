@@ -17,7 +17,9 @@ import java.util.List;
 
 /**
  * SET_QUANTITY Intent 처리
+ * @deprecated 스타일 선택 시 자동으로 수량 1개로 설정 (간소화된 플로우)
  */
+@Deprecated
 @Component
 public class SetQuantityHandler extends AbstractIntentHandler {
 

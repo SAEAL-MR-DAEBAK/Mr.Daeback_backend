@@ -181,4 +181,52 @@ public class ProductService {
         product.setMemo(memo);
         productRepository.save(product);
     }
+
+    /**
+     * Product에 새로운 MenuItem 추가
+     * - LLM: VoiceOrderService에서 구성요소 추가 시 호출
+     *
+     * @param productId Product ID
+     * @param menuItemId 추가할 MenuItem ID
+     * @param quantity 수량
+     * @return 추가된 ProductMenuItem 정보
+     */
+    @Transactional
+    public ProductMenuItemResponseDto addProductMenuItem(UUID productId, UUID menuItemId, int quantity) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
+
+        // 이미 존재하는 MenuItem인지 확인
+        boolean exists = product.getProductMenuItems().stream()
+                .anyMatch(pmi -> pmi.getMenuItem().getId().equals(menuItemId));
+        if (exists) {
+            // 이미 있으면 수량 업데이트
+            UpdateProductMenuItemRequest updateRequest = new UpdateProductMenuItemRequest();
+            updateRequest.setQuantity(quantity);
+            return updateProductMenuItem(productId, menuItemId, updateRequest);
+        }
+
+        MenuItems menuItem = menuItemsRepository.findById(menuItemId)
+                .orElseThrow(() -> new IllegalArgumentException("Menu item not found: " + menuItemId));
+
+        BigDecimal unitPrice = menuItem.getUnitPrice();
+        BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+
+        ProductMenuItem productMenuItem = ProductMenuItem.builder()
+                .product(product)
+                .menuItem(menuItem)
+                .quantity(quantity)
+                .unitPrice(unitPrice)
+                .lineTotal(lineTotal)
+                .build();
+        product.getProductMenuItems().add(productMenuItem);
+
+        Product saved = productRepository.save(product);
+
+        return saved.getProductMenuItems().stream()
+                .filter(pmi -> pmi.getMenuItem().getId().equals(menuItemId))
+                .findFirst()
+                .map(ProductMenuItemResponseDto::from)
+                .orElseThrow(() -> new IllegalStateException("Added menu item not found after save"));
+    }
 }

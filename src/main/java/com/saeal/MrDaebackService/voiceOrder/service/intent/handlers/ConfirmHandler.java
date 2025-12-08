@@ -15,7 +15,9 @@ import java.util.List;
 
 /**
  * CONFIRM_YES, CONFIRM_NO, ADD_TO_CART Intent 처리
+ * @deprecated CheckoutHandler에서 결제 처리 통합 (간소화된 플로우)
  */
+@Deprecated
 @Component
 public class ConfirmHandler extends AbstractIntentHandler {
 

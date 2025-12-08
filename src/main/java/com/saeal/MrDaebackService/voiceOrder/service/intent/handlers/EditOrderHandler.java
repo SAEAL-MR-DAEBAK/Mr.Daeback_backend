@@ -22,7 +22,9 @@ import java.util.regex.Pattern;
  * - 수량 변경, 스타일 변경
  * - 구성요소 제외/추가 (예: "1번 스테이크 빼줘")
  * - 구성요소 수량 변경 (예: "1번 스테이크 2개로 해줘")
+ * @deprecated CustomizeMenuHandler에서 구성요소 변경 처리 통합 (간소화된 플로우)
  */
+@Deprecated
 @Component
 @Slf4j
 public class EditOrderHandler extends AbstractIntentHandler {

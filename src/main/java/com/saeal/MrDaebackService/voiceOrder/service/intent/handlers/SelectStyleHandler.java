@@ -16,7 +16,9 @@ import java.util.List;
 
 /**
  * SELECT_STYLE Intent 처리
+ * @deprecated OrderMenuHandler에서 스타일 선택까지 통합 처리 (간소화된 플로우)
  */
+@Deprecated
 @Component
 public class SelectStyleHandler extends AbstractIntentHandler {
 

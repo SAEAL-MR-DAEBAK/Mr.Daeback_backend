@@ -17,7 +17,9 @@ import java.util.List;
 
 /**
  * ADD_ADDITIONAL_MENU, NO_ADDITIONAL_MENU Intent 처리
+ * @deprecated CustomizeMenuHandler에서 추가 메뉴 처리 통합 (간소화된 플로우)
  */
+@Deprecated
 @Component
 public class AdditionalMenuHandler extends AbstractIntentHandler {
 
